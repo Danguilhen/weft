@@ -396,6 +396,11 @@ fn apply_env(value: &mut serde_json::Value) -> Result<(), ConfigError> {
 }
 
 fn parse_env_value(raw: &str) -> serde_json::Value {
+    // TOML parses an empty document as an empty table; an empty override (for
+    // example an unset admin token) must stay an empty string.
+    if raw.trim().is_empty() {
+        return serde_json::Value::String(String::new());
+    }
     if let Ok(value) = toml::from_str::<toml::Value>(raw) {
         if let Ok(value) = serde_json::to_value(value) {
             return value;
@@ -428,6 +433,18 @@ fn set_json(
 #[cfg(test)]
 mod tests {
     use super::{AppConfig, ConfigError};
+
+    #[test]
+    fn empty_env_override_is_an_empty_string() {
+        assert_eq!(
+            super::parse_env_value(""),
+            serde_json::Value::String(String::new())
+        );
+        assert_eq!(
+            super::parse_env_value("   "),
+            serde_json::Value::String(String::new())
+        );
+    }
 
     #[test]
     fn defaults_are_loopback_and_safe() {
