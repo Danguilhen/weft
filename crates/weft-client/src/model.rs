@@ -60,6 +60,8 @@ pub struct ContentSummary {
     pub tags: Vec<String>,
     pub licence: Licence,
     pub media_url: String,
+    #[serde(default)]
+    pub thumbnail_url: Option<String>,
     pub manifest_url: String,
     #[serde(default)]
     pub source: Option<String>,
@@ -121,6 +123,8 @@ pub struct Manifest {
     pub origin: String,
     #[serde(default)]
     pub source: Option<String>,
+    #[serde(default)]
+    pub thumbnail_url: Option<String>,
     #[serde(default)]
     pub sources: Vec<Source>,
     pub licence: ManifestLicence,

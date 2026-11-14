@@ -347,6 +347,35 @@
         }
       }
     },
+    "/media/{hash}/thumbnail": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "JPEG thumbnail",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Hash"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thumbnail bytes",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
     "/media/{hash}/manifest": {
       "get": {
         "tags": [
@@ -1265,6 +1294,10 @@
             "type": "string",
             "format": "uri"
           },
+          "thumbnailUrl": {
+            "type": "string",
+            "format": "uri"
+          },
           "manifestUrl": {
             "type": "string",
             "format": "uri"
@@ -1427,6 +1460,10 @@
             "format": "uri"
           },
           "source": {
+            "type": "string",
+            "format": "uri"
+          },
+          "thumbnailUrl": {
             "type": "string",
             "format": "uri"
           },

@@ -57,7 +57,8 @@ implemented. Do not claim otherwise in README, issues or release notes.
 - Multipart upload with `open`/`review`/`closed` policies, per-client token
   buckets, quarantine, licence evidence and reports/disputes.
 - Search, newest/view-based trending lists, tags, signed manifests with
-  evidence, sources, byte serving with Range/ETag/Digest, and admin queue/
+  evidence, sources, byte serving with Range/ETag/Digest and JPEG thumbnails,
+  and admin queue/
   approve/reject/restrict/remove/reinstate/stats/reports/storage/blocks/licence.
 - Local URL/domain/tag block rules applied at upload and public retrieval.
 - Source/attribution metadata, view counts, upload/decode/storage metrics,

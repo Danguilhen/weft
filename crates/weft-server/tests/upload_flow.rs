@@ -146,6 +146,7 @@ async fn upload_review_search_and_fetch() {
     let search_text = String::from_utf8_lossy(&body);
     assert!(search_text.contains(&hash));
     assert!(search_text.contains("https://example.org/original.gif"));
+    assert!(search_text.contains(&format!("/media/{hash}/thumbnail")));
 
     let response = app
         .clone()
@@ -233,6 +234,24 @@ async fn upload_review_search_and_fetch() {
     );
     let body = to_bytes(response.into_body(), 4096).await.unwrap();
     assert_eq!(&body[..], gif);
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/media/{hash}/thumbnail"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response.headers().get(header::CONTENT_TYPE).unwrap(),
+        "image/jpeg"
+    );
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    assert_eq!(&body[..], b"fake-thumbnail");
 
     let response = app
         .clone()

@@ -54,6 +54,7 @@ Search, trending and list endpoints return:
     "status": "unverified"
   },
   "mediaUrl": "https://gifs.example/media/3a7bd3e2360a...",
+  "thumbnailUrl": "https://gifs.example/media/3a7bd3e2360a.../thumbnail",
   "manifestUrl": "https://gifs.example/media/3a7bd3e2360a.../manifest",
   "createdAt": "2026-11-14T00:00:00Z"
 }
@@ -119,6 +120,12 @@ Returns the signed manifest. This is an API convenience alias for
 
 Returns known replicas and their verification times. Sources are hints, not
 trust.
+
+### `GET /media/{hash}/thumbnail`
+
+Returns the stored JPEG thumbnail. It is intended for picker grids and
+previews; the original bytes remain at `/media/{hash}`. The response is
+immutable and cached for a year.
 
 ### `GET /media/{hash}`
 

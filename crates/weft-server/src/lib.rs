@@ -146,6 +146,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/media/{hash}", get(manifest))
         .route("/api/v1/media/{hash}/sources", get(sources))
         .route("/media/{hash}", get(media).head(media_head))
+        .route("/media/{hash}/thumbnail", get(thumbnail))
         .route("/media/{hash}/manifest", get(manifest))
         .route("/media/{hash}/sources", get(sources))
         .route("/api/v1/upload", post(upload))
@@ -423,6 +424,47 @@ async fn media_head(
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
     media_response(&state, &hash, &headers, true).await
+}
+
+async fn thumbnail(
+    State(state): State<AppState>,
+    AxumPath(hash): AxumPath<String>,
+) -> Result<Response, ApiError> {
+    let row = weft_db::get_content(&state.pool, &hash, false)
+        .await
+        .map_err(ApiError::internal)?
+        .ok_or_else(|| {
+            ApiError::not_found(
+                "content_not_found",
+                "No active content exists for this hash.",
+            )
+        })?;
+    ensure_not_blocked(&state, &row).await?;
+    let key = row.thumbnail_key.ok_or_else(|| {
+        ApiError::not_found(
+            "thumbnail_not_found",
+            "No thumbnail exists for this content.",
+        )
+    })?;
+    let bytes = state
+        .storage
+        .get_thumbnail(&key)
+        .map_err(|error| match error {
+            StorageError::NotFound(_) => ApiError::not_found(
+                "thumbnail_not_found",
+                "The thumbnail is missing from storage.",
+            ),
+            other => ApiError::internal(other),
+        })?;
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "image/jpeg")
+        .header(header::CONTENT_LENGTH, bytes.len().to_string())
+        .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
+        .header(header::ETAG, format!("\"thumb-{hash}\""))
+        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
+        .body(Body::from(bytes))
+        .map_err(ApiError::internal)
 }
 
 async fn media_response(
@@ -1212,6 +1254,7 @@ fn summary(row: &ContentRow, state: &AppState) -> Value {
             "status": row.licence_status,
         },
         "mediaUrl": format!("{base}/media/{hash}"),
+        "thumbnailUrl": row.thumbnail_key.as_ref().map(|_| format!("{base}/media/{hash}/thumbnail")),
         "manifestUrl": format!("{base}/api/v1/media/{hash}"),
         "source": row.source_url,
         "createdAt": row.created_at.to_rfc3339(),
@@ -1229,6 +1272,7 @@ fn admin_summary(row: &ContentRow, state: &AppState) -> Value {
 
 fn manifest_json(state: &AppState, row: &ContentRow) -> Result<Value, ApiError> {
     let source = source_value(state, row);
+    let base = state.config.server.external_url.trim_end_matches('/');
     let mut value = json!({
         "version": "weft-manifest/0.1",
         "contentId": content_id(row)?,
@@ -1243,6 +1287,7 @@ fn manifest_json(state: &AppState, row: &ContentRow) -> Result<Value, ApiError> 
         "updatedAt": row.updated_at.to_rfc3339(),
         "origin": row.origin_node,
         "source": row.source_url,
+        "thumbnailUrl": row.thumbnail_key.as_ref().map(|_| format!("{base}/media/{}/thumbnail", row.hash)),
         "sources": [source],
         "licence": {
             "claim": row.licence_claim,
