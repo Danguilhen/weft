@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://weft.network/schemas/manifest-0.1.json",
+  "title": "Weft media manifest",
+  "description": "Signed metadata for immutable media bytes. The signature is Ed25519 over RFC 8785 canonical JSON with the signature property removed.",
+  "type": "object",
+  "required": [
+    "version",
+    "contentId",
+    "hash",
+    "mime",
+    "size",
+    "origin",
+    "signature"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "weft-manifest/0.1"
+    },
+    "contentId": {
+      "type": "string",
+      "pattern": "^urn:weft:sha256:[0-9a-f]{64}$"
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "mime": {
+      "type": "string",
+      "pattern": "^image/"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "frames": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "origin": {
+      "type": "string",
+      "format": "uri"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "licence": {
+      "$ref": "#/$defs/licence"
+    },
+    "moderation": {
+      "$ref": "#/$defs/moderation"
+    },
+    "tags": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 40
+      }
+    },
+    "signature": {
+      "$ref": "#/$defs/signature"
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "required": ["nodeId", "url"],
+      "properties": {
+        "nodeId": {
+          "type": "string",
+          "format": "uri"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "verifiedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "licence": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "claim": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "spdx": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "unverified",
+            "evidence_provided",
+            "verified_evidence",
+            "disputed",
+            "invalidated"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "fetchedAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "moderation": {
+      "type": "object",
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["pending", "active", "restricted", "removed", "rejected"]
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "eventsUrl": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": true
+    },
+    "signature": {
+      "type": "object",
+      "required": ["alg", "keyId", "value"],
+      "properties": {
+        "alg": {
+          "type": "string",
+          "const": "Ed25519"
+        },
+        "keyId": {
+          "type": "string",
+          "format": "uri"
+        },
+        "value": {
+          "type": "string",
+          "description": "base64url without padding"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": true
+}

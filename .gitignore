@@ -1,0 +1,29 @@
+# Build output
+/target/
+**/target/
+
+# Generated knowledge graph
+/graphify-out/
+/.graphify/
+
+# Local runtime state
+deploy/state/
+*.log
+*.pid
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/
+
+# Local databases and uploads
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+/data/
+/uploads/

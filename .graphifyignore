@@ -1,0 +1,18 @@
+# Graphify ignores — generated state and non-source material.
+# The CLI excludes are also listed in tools/graphify.sh because graphify uses
+# them for extraction even when this file is present.
+
+target/
+**/target/
+graphify-out/
+.graphify/
+.git/
+node_modules/
+vendor/
+deploy/state/
+data/
+uploads/
+*.log
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

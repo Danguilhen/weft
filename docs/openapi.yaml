@@ -1,0 +1,631 @@
+openapi: 3.1.0
+info:
+  title: Weft REST API
+  version: 0.1.0-draft
+  description: |
+    Draft API for a Weft node. Immutable media bytes are served from /media/{hash};
+    metadata and discovery live under /api/v1. See docs/API.md for conventions.
+    This document is a design artifact and must be updated with the implementation.
+  license:
+    name: AGPL-3.0-or-later
+    url: https://www.gnu.org/licenses/agpl-3.0.html
+servers:
+  - url: https://gifs.example
+    description: A node origin (illustrative)
+tags:
+  - name: discovery
+  - name: media
+  - name: upload
+  - name: moderation
+  - name: federation
+  - name: admin
+paths:
+  /api/v1/search:
+    get:
+      tags: [discovery]
+      summary: Search local content
+      parameters:
+        - $ref: '#/components/parameters/Query'
+        - name: tags
+          in: query
+          schema: { type: string }
+          description: Comma-separated tags; AND semantics.
+        - name: mime
+          in: query
+          schema: { type: string, example: image/gif }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [relevance, newest, trending], default: relevance }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Content page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/trending:
+    get:
+      tags: [discovery]
+      summary: Locally trending content
+      parameters:
+        - name: window
+          in: query
+          schema: { type: string, enum: [24h, 7d, 30d], default: 24h }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Content page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentList' }
+  /api/v1/media:
+    get:
+      tags: [discovery]
+      summary: List local content
+      parameters:
+        - name: sort
+          in: query
+          schema: { type: string, enum: [newest, trending], default: newest }
+        - name: tag
+          in: query
+          schema: { type: string }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Content page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentList' }
+  /api/v1/tags:
+    get:
+      tags: [discovery]
+      summary: Local tag vocabulary
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Tags
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagList' }
+  /api/v1/media/{hash}:
+    get:
+      tags: [media]
+      summary: Signed content manifest
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '200':
+          description: Manifest
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Manifest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/Gone' }
+  /api/v1/media/{hash}/sources:
+    get:
+      tags: [media]
+      summary: Known sources for content
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '200':
+          description: Sources
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sources' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /media/{hash}:
+    get:
+      tags: [media]
+      summary: Original media bytes
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '200':
+          description: Original bytes
+          headers:
+            ETag: { schema: { type: string } }
+            Digest: { schema: { type: string } }
+            Cache-Control: { schema: { type: string } }
+          content:
+            image/gif:
+              schema: { type: string, format: binary }
+            image/png:
+              schema: { type: string, format: binary }
+            image/jpeg:
+              schema: { type: string, format: binary }
+            image/webp:
+              schema: { type: string, format: binary }
+        '206': { description: Partial content }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '410': { $ref: '#/components/responses/Gone' }
+  /media/{hash}/manifest:
+    get:
+      tags: [media]
+      summary: Signed manifest (protocol alias)
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '200':
+          description: Manifest
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Manifest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /media/{hash}/sources:
+    get:
+      tags: [media]
+      summary: Sources (protocol alias)
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '200':
+          description: Sources
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Sources' }
+  /api/v1/upload:
+    post:
+      tags: [upload]
+      summary: Upload an image or GIF
+      description: Anonymous when the node policy allows it; otherwise requires a bearer token.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+                title: { type: string, maxLength: 200 }
+                description: { type: string, maxLength: 2000 }
+                tags: { type: string, description: Comma-separated }
+                source: { type: string, format: uri }
+                licence: { type: string, example: CC0-1.0 }
+                licenceUrl: { type: string, format: uri }
+                evidence:
+                  type: array
+                  items: { type: string, format: uri }
+      responses:
+        '202':
+          description: Accepted for review or publication
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadResponse' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/Unsupported' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/report:
+    post:
+      tags: [moderation]
+      summary: Report content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportRequest' }
+      responses:
+        '202': { description: Report recorded }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/licence-dispute:
+    post:
+      tags: [moderation]
+      summary: Dispute a licence claim
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LicenceDisputeRequest' }
+      responses:
+        '202': { description: Dispute recorded }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/node:
+    get:
+      tags: [federation]
+      summary: This node descriptor
+      responses:
+        '200':
+          description: Node descriptor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NodeDescriptor' }
+  /api/v1/nodes:
+    get:
+      tags: [federation]
+      summary: Known nodes
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Node page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NodeList' }
+  /api/v1/nodes/{nodeId}:
+    get:
+      tags: [federation]
+      summary: One known node
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema: { type: string, format: uri }
+      responses:
+        '200':
+          description: Node descriptor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NodeDescriptor' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/replicas:
+    post:
+      tags: [federation]
+      summary: Advertise a verified replica
+      security: [{ nodeSignature: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReplicaAdvertisement' }
+      responses:
+        '202': { description: Advertisement accepted for verification }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/receipts:
+    post:
+      tags: [federation]
+      summary: Submit a countersigned transfer receipt
+      security: [{ nodeSignature: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TransferReceipt' }
+      responses:
+        '202': { description: Receipt recorded }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/queue:
+    get:
+      tags: [admin]
+      summary: Pending uploads
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Pending uploads
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/content/{hash}/approve:
+    post:
+      tags: [admin]
+      summary: Approve quarantined content
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '204': { description: Approved }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/admin/content/{hash}/reject:
+    post:
+      tags: [admin]
+      summary: Reject and delete quarantined content
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '204': { description: Rejected }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/content/{hash}/remove:
+    post:
+      tags: [admin]
+      summary: Remove content and keep a tombstone
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - $ref: '#/components/parameters/Hash'
+      responses:
+        '204': { description: Removed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/stats:
+    get:
+      tags: [admin]
+      summary: Storage and queue counters
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Counters
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+components:
+  parameters:
+    Hash:
+      name: hash
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[0-9a-f]{64}$' }
+    Query:
+      name: q
+      in: query
+      schema: { type: string }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    nodeSignature:
+      type: apiKey
+      in: header
+      name: X-Weft-Signature
+      description: Ed25519 signature over the canonical request; see docs/PROTOCOL.md.
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthorized:
+      description: Authentication required or invalid
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Gone:
+      description: Removed content
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    TooLarge:
+      description: Payload too large
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unsupported:
+      description: Unsupported media type
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unprocessable:
+      description: Validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: Rate limited
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  schemas:
+    ContentSummary:
+      type: object
+      required: [hash, contentId, mime, mediaUrl, manifestUrl]
+      properties:
+        hash: { type: string, pattern: '^[0-9a-f]{64}$' }
+        contentId: { type: string, example: 'urn:weft:sha256:3a7bd3e2360a...' }
+        mime: { type: string, example: image/gif }
+        width: { type: integer }
+        height: { type: integer }
+        frames: { type: integer }
+        durationMs: { type: integer }
+        title: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        licence: { $ref: '#/components/schemas/Licence' }
+        mediaUrl: { type: string, format: uri }
+        manifestUrl: { type: string, format: uri }
+        createdAt: { type: string, format: date-time }
+    ContentList:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ContentSummary' }
+        nextCursor:
+          type: [string, 'null']
+        totalEstimate: { type: integer }
+    TagList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              tag: { type: string }
+              count: { type: integer }
+        nextCursor:
+          type: [string, 'null']
+    Licence:
+      type: object
+      properties:
+        claim: { type: string }
+        spdx: { type: string }
+        url: { type: string, format: uri }
+        status:
+          type: string
+          enum: [unverified, evidence_provided, verified_evidence, disputed, invalidated]
+        evidence:
+          type: array
+          items:
+            type: object
+            properties:
+              url: { type: string, format: uri }
+              note: { type: string }
+              fetchedAt: { type: [string, 'null'], format: date-time }
+    Manifest:
+      type: object
+      required: [version, contentId, hash, mime, size, origin, signature]
+      properties:
+        version: { type: string, example: weft-manifest/0.1 }
+        contentId: { type: string }
+        hash: { type: string }
+        mime: { type: string }
+        size: { type: integer }
+        width: { type: integer }
+        height: { type: integer }
+        frames: { type: integer }
+        durationMs: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        origin: { type: string, format: uri }
+        sources:
+          type: array
+          items: { $ref: '#/components/schemas/Source' }
+        licence: { $ref: '#/components/schemas/Licence' }
+        moderation:
+          type: object
+          properties:
+            state: { type: string, enum: [pending, active, restricted, removed, rejected] }
+            updatedAt: { type: string, format: date-time }
+            eventsUrl: { type: string, format: uri }
+        tags:
+          type: array
+          items: { type: string }
+        signature: { $ref: '#/components/schemas/Signature' }
+    Source:
+      type: object
+      required: [nodeId, url]
+      properties:
+        nodeId: { type: string, format: uri }
+        url: { type: string, format: uri }
+        verifiedAt: { type: string, format: date-time }
+        bytes: { type: integer }
+    Sources:
+      type: object
+      required: [contentId, sources]
+      properties:
+        contentId: { type: string }
+        sources:
+          type: array
+          items: { $ref: '#/components/schemas/Source' }
+        signature: { $ref: '#/components/schemas/Signature' }
+    Signature:
+      type: object
+      required: [alg, keyId, value]
+      properties:
+        alg: { type: string, enum: [Ed25519] }
+        keyId: { type: string, format: uri }
+        value: { type: string, description: base64url without padding }
+    UploadResponse:
+      type: object
+      required: [uploadId, contentId, hash, status]
+      properties:
+        uploadId: { type: string }
+        contentId: { type: string }
+        hash: { type: string }
+        status: { type: string, enum: [pending, active, rejected, failed] }
+        review: { type: string, enum: [queued, not_required] }
+        manifestUrl: { type: string, format: uri }
+    ReportRequest:
+      type: object
+      required: [contentId, reason]
+      properties:
+        contentId: { type: string }
+        reason: { type: string, enum: [licence, illegal, spam, malware, privacy, other] }
+        details: { type: string, maxLength: 4000 }
+        contact: { type: string, description: Optional; never published }
+    LicenceDisputeRequest:
+      type: object
+      required: [contentId, claim]
+      properties:
+        contentId: { type: string }
+        claim: { type: string, maxLength: 4000 }
+        evidence:
+          type: array
+          items: { type: string, format: uri }
+        contact: { type: string }
+    NodeDescriptor:
+      type: object
+      required: [version, nodeId, publicUrl, keys]
+      properties:
+        version: { type: string, example: weft-node/0.1 }
+        nodeId: { type: string, format: uri }
+        name: { type: string }
+        description: { type: string }
+        publicUrl: { type: string, format: uri }
+        actor: { type: string, format: uri }
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              keyId: { type: string, format: uri }
+              alg: { type: string, enum: [Ed25519] }
+              publicKey: { type: string }
+              createdAt: { type: string, format: date-time }
+              validUntil: { type: [string, 'null'], format: date-time }
+              revokedAt: { type: [string, 'null'], format: date-time }
+        capabilities: { type: object, additionalProperties: true }
+        limits: { type: object, additionalProperties: true }
+        policyUrl: { type: string, format: uri }
+        contact: { type: string }
+        updatedAt: { type: string, format: date-time }
+        signature: { $ref: '#/components/schemas/Signature' }
+    NodeList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/NodeDescriptor' }
+        nextCursor:
+          type: [string, 'null']
+    ReplicaAdvertisement:
+      type: object
+      required: [contentId, nodeId, url, bytes, verifiedAt, signature]
+      properties:
+        contentId: { type: string }
+        nodeId: { type: string, format: uri }
+        url: { type: string, format: uri }
+        bytes: { type: integer }
+        verifiedAt: { type: string, format: date-time }
+        signature: { $ref: '#/components/schemas/Signature' }
+    TransferReceipt:
+      type: object
+      required: [receiptId, contentId, bytes, servedBy, servedTo, nonce, signature]
+      properties:
+        receiptId: { type: string }
+        contentId: { type: string }
+        bytes: { type: integer }
+        servedBy: { type: string, format: uri }
+        servedTo: { type: string, format: uri }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        nonce: { type: string }
+        signature: { $ref: '#/components/schemas/Signature' }
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            detail: { type: object, additionalProperties: true }
