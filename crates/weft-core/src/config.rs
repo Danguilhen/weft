@@ -239,13 +239,36 @@ pub enum ConfigError {
 
 impl AppConfig {
     /// Load a TOML file and apply `WEFT__SECTION__KEY` environment overrides.
+    ///
+    /// Relative storage and key paths are resolved against the directory that
+    /// contains the configuration file, not the process working directory.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
         let text = fs::read_to_string(path).map_err(|source| ConfigError::Read {
             path: path.display().to_string(),
             source,
         })?;
-        Self::from_toml(&text)
+        let mut config = Self::from_toml(&text)?;
+        let base = path
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .unwrap_or_else(|| Path::new("."));
+        config.resolve_relative_paths(base);
+        config.validate()?;
+        Ok(config)
+    }
+
+    /// Make relative storage and key paths absolute against `base`.
+    pub fn resolve_relative_paths(&mut self, base: &Path) {
+        if !self.storage.path.trim().is_empty() && Path::new(&self.storage.path).is_relative() {
+            self.storage.path = base.join(&self.storage.path).to_string_lossy().into_owned();
+        }
+        if !self.node.key_file.trim().is_empty() && Path::new(&self.node.key_file).is_relative() {
+            self.node.key_file = base
+                .join(&self.node.key_file)
+                .to_string_lossy()
+                .into_owned();
+        }
     }
 
     /// Parse a TOML string and apply environment overrides.
@@ -423,6 +446,25 @@ mod tests {
         )
         .unwrap_err();
         assert!(matches!(error, ConfigError::Invalid(_)));
+    }
+
+    #[test]
+    fn resolves_paths_against_the_config_directory() {
+        let directory = tempfile::tempdir().unwrap();
+        let mut config = AppConfig::from_toml(
+            r#"
+            [node]
+            key_file = "node.key"
+            [storage]
+            path = "data"
+            "#,
+        )
+        .unwrap();
+        config.resolve_relative_paths(directory.path());
+        assert!(std::path::Path::new(&config.node.key_file).is_absolute());
+        assert!(std::path::Path::new(&config.storage.path).is_absolute());
+        assert!(config.node.key_file.ends_with("node.key"));
+        assert!(config.storage.path.ends_with("data"));
     }
 
     #[test]

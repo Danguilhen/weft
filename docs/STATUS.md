@@ -14,7 +14,8 @@ the only status page.
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
 | Rust unit tests | 18 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
-| Rust workspace | Milestone 0 scaffold complete | `Cargo.toml`, `target/debug/weft` |
+| Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
+| Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
 | Standalone node MVP | Not started | — |
 | ActivityPub federation | Not started | — |
 | Media replication | Not started | — |
@@ -37,15 +38,19 @@ issues or release notes.
 - ADR-001 through ADR-012.
 - Rust workspace with `weft-core`, `weft-db`, `weft-storage`,
   `weft-validation`, `weft-server` and `weft-cli`.
-- `weft init`, `weft keygen`, `weft migrate` and `weft serve` commands.
+- `weft init`, `weft keygen`, `weft migrate`, `weft doctor` and `weft serve`
+  commands. Relative config, key and storage paths are resolved against the
+  configuration file directory.
 - First PostgreSQL migration (`0001_init.sql`) covering nodes, keys, blobs,
   content, tags, sources, evidence, uploads, reports, moderation events,
   federation outbox/inbox, block rules and audit log.
 - Content-addressed local storage with atomic writes and hash verification.
 - `GET /healthz`, `GET /readyz`, `GET /metrics` and `GET /api/v1/node`.
-- Dockerfile, Compose profile and CI workflow (the Compose profile has not
-  been run locally because Docker is unavailable in this environment; CI has a
-  compose job).
+- `flake.nix`, `shell.nix` and `.envrc` for a reproducible Nix dev shell and
+  package build.
+- Dockerfile, Compose profile and CI workflow. The Compose profile has not been
+  run locally because Docker is unavailable here; CI has container and Compose
+  jobs.
 - OpenAPI 3.1 draft for the MVP REST surface.
 - JSON schemas for the media manifest and node descriptor.
 - `tools/check_docs.py`, `tools/graphify.sh`, `Makefile`.
@@ -62,7 +67,7 @@ issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust unit tests | 18 | `cargo test --workspace` |
+| Rust unit tests | 20 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Protocol golden vectors | 0 | Milestone 2 |
 | Federation interop | 0 | Milestone 2 |

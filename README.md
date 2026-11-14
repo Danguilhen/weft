@@ -111,6 +111,20 @@ tools/                Documentation checks, graphify wrapper
 See [`LICENSING.md`](LICENSING.md). Content licensing is a separate concern:
 see [`docs/CONTENT_LICENSING.md`](docs/CONTENT_LICENSING.md).
 
+## Development
+
+The supported development environment is Nix:
+
+```bash
+nix develop
+cargo test --workspace
+nix flake check
+nix build .#weft
+```
+
+Docker is the operator-facing deployment path, not the development environment:
+`deploy/docker-compose.yml` builds and runs a node with PostgreSQL.
+
 ## Contributing
 
 Read [`AGENTS.md`](AGENTS.md) first. It defines the documentation rules, the

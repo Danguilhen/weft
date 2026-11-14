@@ -27,3 +27,7 @@ deploy/state/
 *.sqlite-wal
 /data/
 /uploads/
+
+# Nix
+.direnv/
+result

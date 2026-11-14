@@ -24,6 +24,13 @@ beyond the public HTTP API.
 ```bash
 git clone <repository> weft
 cd weft
+nix develop
+cargo test --workspace
+```
+
+For the Compose profile:
+
+```bash
 cp deploy/.env.example deploy/.env
 # edit deploy/.env
 docker compose -f deploy/docker-compose.yml up -d --build
@@ -35,6 +42,7 @@ and listens on `0.0.0.0:8080`. For a local binary:
 
 ```bash
 weft init --config config.toml --public-url http://127.0.0.1:8080
+weft doctor --config config.toml
 weft migrate --config config.toml
 weft serve --config config.toml
 ```

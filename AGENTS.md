@@ -91,22 +91,20 @@ tools/                Documentation checks, graphify wrapper.
 
 ## Development commands
 
-The Milestone 0 workspace exists. The checks are:
+The Milestone 0 workspace and Nix dev shell exist. The checks are:
 
 ```bash
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+nix develop -c cargo fmt --all -- --check
+nix develop -c cargo clippy --workspace --all-targets -- -D warnings
+nix develop -c cargo test --workspace
+nix flake check
+nix build .#weft
 python3 tools/check_docs.py      # relative links and required docs
 ./tools/graphify.sh              # optional knowledge graph refresh
 ```
 
-The Nix development command used in this environment is:
-
-```bash
-nix shell nixpkgs#cargo nixpkgs#rustc nixpkgs#rustfmt nixpkgs#clippy nixpkgs#stdenv.cc \
-  -c cargo test --workspace
-```
+`nix develop` is the supported development shell. `shell.nix` is a compatibility
+fallback for `nix-shell`.
 
 The PostgreSQL smoke test is ignored unless `WEFT_TEST_DATABASE_URL` points to a
 disposable database:

@@ -15,6 +15,10 @@ WEFT__UPLOAD__MODE=review
 Secrets should come from the environment or a secret file, never from a
 world-readable `config.toml`.
 
+Relative `node.key_file`, `storage.path` and `privacy.hash_salt_file` paths are
+resolved against the directory containing the configuration file. `weft init`
+writes absolute paths in the generated configuration.
+
 ## 1. Reference
 
 ```toml

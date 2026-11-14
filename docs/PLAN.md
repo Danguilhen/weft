@@ -35,7 +35,8 @@ Milestone 1.
 
 ## 3. Milestone 1 — Standalone MVP
 
-**Gate:** `DESIGN_REVIEW.md` is approved for Milestone 1; DR-01 (decoder worker),
+**Gate:** `DESIGN_REVIEW.md` is approved for Milestone 1; the first CI run on
+`main` passes all jobs, including container and Compose; DR-01 (decoder worker),
 DR-02 (pinned context) and DR-03 (outbox/inbox schema) are accepted as
 implementation requirements.
 

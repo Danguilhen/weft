@@ -12,6 +12,8 @@ use ed25519_dalek::SigningKey;
 
 use weft_core::AppConfig;
 
+mod doctor;
+
 #[derive(Debug, Parser)]
 #[command(name = "weft", version, about = "Weft node command line")]
 struct Cli {
@@ -43,6 +45,8 @@ enum Command {
     },
     /// Apply database migrations.
     Migrate,
+    /// Check the host against the supported node profile.
+    Doctor,
     /// Run the HTTP node until Ctrl-C.
     Serve,
 }
@@ -63,9 +67,17 @@ async fn main() -> Result<()> {
             Ok(())
         }
         Command::Migrate => migrate(&cli.config).await,
+        Command::Doctor => doctor::run(&cli.config),
         Command::Serve => {
             let config = AppConfig::load(&cli.config)
                 .with_context(|| format!("loading {}", cli.config.display()))?;
+            let report = doctor::check(&config);
+            for warning in &report.warnings {
+                tracing::warn!(warning, "weft doctor");
+            }
+            for failure in &report.failures {
+                tracing::error!(failure, "weft doctor");
+            }
             weft_server::run(config).await?;
             Ok(())
         }
@@ -85,11 +97,13 @@ fn init(config_path: &Path, name: &str, public_url: &str, force: bool) -> Result
         }
     }
 
-    let key_path = config_path
+    let config_dir = config_path
         .parent()
         .filter(|parent| !parent.as_os_str().is_empty())
-        .unwrap_or_else(|| Path::new("."))
-        .join("node.key");
+        .unwrap_or_else(|| Path::new("."));
+    let config_dir = fs::canonicalize(config_dir)
+        .with_context(|| format!("resolving {}", config_dir.display()))?;
+    let key_path = config_dir.join("node.key");
     if key_path.exists() && !force {
         bail!(
             "{} already exists; pass --force to replace it",
@@ -102,6 +116,7 @@ fn init(config_path: &Path, name: &str, public_url: &str, force: bool) -> Result
     config.node.name = name.to_string();
     config.node.public_url = public_url.to_string();
     config.node.key_file = key_path.to_string_lossy().to_string();
+    config.storage.path = config_dir.join("data").to_string_lossy().to_string();
 
     fs::create_dir_all(&config.storage.path)
         .with_context(|| format!("creating storage path {}", config.storage.path))?;
