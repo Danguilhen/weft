@@ -16,7 +16,7 @@ Status: Milestone 1 in progress; the standalone vertical slice works. Started
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
-| Standalone node MVP | Partial: upload → review → search → media + admin works | `upload_flow` test |
+| Standalone node MVP | Complete locally; CI/acceptance verification pending | `upload_flow` test |
 | ActivityPub federation | Not started | — |
 | Media replication | Not started | — |
 | Contribution accounting | Not started | — |
@@ -52,12 +52,13 @@ claim otherwise in README, issues or release notes.
   count, decoded-memory limits and JPEG thumbnails.
 - Multipart upload with `open`/`review`/`closed` policies, per-client token
   buckets, quarantine, licence evidence and reports/disputes.
-- Search, newest/trending lists, tags, signed manifests, sources, byte serving
-  with Range/ETag/Digest, and admin queue/approve/reject/restrict/remove/
-  reinstate/stats/reports/storage/blocks.
+- Search, newest/view-based trending lists, tags, signed manifests with
+  evidence, sources, byte serving with Range/ETag/Digest, and admin queue/
+  approve/reject/restrict/remove/reinstate/stats/reports/storage/blocks/licence.
 - Local URL/domain/tag block rules applied at upload and public retrieval.
-- Source/attribution metadata, view counts, upload/decode/storage metrics and
-  `/api/openapi.json`.
+- Source/attribution metadata, view counts, upload/decode/storage metrics,
+  OpenAPI JSON, orphan cleanup and a storage quota. The search backend is behind
+  a `SearchIndex` trait for a future Meilisearch adapter.
 - `GET /healthz`, `GET /readyz`, `GET /metrics` and `GET /api/v1/node`.
 - `flake.nix`, `shell.nix` and `.envrc` for a reproducible Nix dev shell and
   package build.
@@ -71,7 +72,6 @@ claim otherwise in README, issues or release notes.
 
 ## What does not exist
 
-- Orphan deletion/quota enforcement (the storage report is read-only).
 - A deployed or production-tested node.
 - ActivityPub federation, replication and accounting.
 - Jabu animation fix or GIF picker.
@@ -107,7 +107,6 @@ claim otherwise in README, issues or release notes.
 
 ## Next milestone
 
-The Milestone 1 vertical slice works. Finish the remaining M1 items in
-[`PLAN.md`](PLAN.md) and verify the first CI container/Compose run before calling
-the standalone MVP complete. Federation, replication and accounting remain
-gated.
+The Milestone 1 feature set works locally. The remaining gate is the first CI
+run (container and Compose) and the acceptance demo on the supported profile.
+Federation, replication and accounting remain gated.

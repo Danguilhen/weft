@@ -81,6 +81,29 @@ async fn upload_review_search_and_fetch() {
     let uploaded: Value = serde_json::from_slice(&body).unwrap();
     let hash = uploaded["hash"].as_str().unwrap().to_string();
 
+    let duplicate = multipart_body(gif, "Test GIF", "cat,test");
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "127.0.0.1")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(duplicate))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    let duplicate: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(duplicate["hash"].as_str(), Some(hash.as_str()));
+    assert_eq!(duplicate["contentId"], uploaded["contentId"]);
+
     let response = app
         .clone()
         .oneshot(
@@ -142,6 +165,56 @@ async fn upload_review_search_and_fetch() {
         Some("https://example.org/original.gif")
     );
     assert!(manifest["signature"]["value"].as_str().is_some());
+    let content_id = uploaded["contentId"].as_str().unwrap();
+
+    let dispute = serde_json::json!({
+        "contentId": content_id,
+        "claim": "The claimed licence is incorrect.",
+        "evidence": ["https://example.org/other-source"]
+    });
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/licence-dispute")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(dispute.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/media/{hash}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let body = to_bytes(response.into_body(), 8192).await.unwrap();
+    let disputed: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(disputed["licence"]["status"], "disputed");
+
+    let update = serde_json::json!({ "status": "verified_evidence", "note": "source checked" });
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/admin/content/{hash}/licence"))
+                .header(header::AUTHORIZATION, "Bearer test-admin")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(update.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
 
     let response = app
         .clone()
@@ -304,6 +377,55 @@ async fn upload_review_search_and_fetch() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+    let rejected_gif = b"GIF89a-rejected-upload";
+    let rejected_body = multipart_body(rejected_gif, "Rejected GIF", "other");
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "127.0.0.1")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(rejected_body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    let rejected: Value = serde_json::from_slice(&body).unwrap();
+    let rejected_hash = rejected["hash"].as_str().unwrap().to_string();
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(format!("/api/v1/admin/content/{rejected_hash}/reject"))
+                .header(header::AUTHORIZATION, "Bearer test-admin")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/media/{rejected_hash}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
     let response = app
         .clone()

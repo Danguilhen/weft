@@ -44,15 +44,10 @@ Scope and acceptance: [`MVP.md`](MVP.md).
 
 ### Remaining
 
-- Add a search-index trait before replacing PostgreSQL; keep the current FTS
-  query as the default.
-- Add licence-evidence verification actions and tests for the licence state
-  machine beyond the initial claim.
-- Add a duplicate/idempotent upload test and tests for dispute/reject.
-- Add orphan deletion and storage quota enforcement on top of the storage report.
 - Verify the first CI run, the container build and the Compose health check.
 - Run the acceptance demo on the supported 2 vCPU / 2 GB / 20 GB profile and
-  record the numbers.
+  record the numbers in `STATUS.md`.
+- Add tests for orphan cleanup and storage-quota refusal.
 
 Exit criteria: the ten-step acceptance demo in `MVP.md` passes on the supported
 2 vCPU / 2 GB / 20 GB node with PostgreSQL.

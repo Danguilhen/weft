@@ -41,6 +41,7 @@ const OPENAPI_JSON: &str = include_str!("../../../docs/openapi.json");
 #[derive(Clone)]
 pub struct AppState {
     pub pool: PgPool,
+    pub search: Arc<dyn weft_db::SearchIndex>,
     pub storage: Arc<dyn BlobStore>,
     pub metrics: Arc<Metrics>,
     pub node: Arc<NodePublic>,
@@ -69,9 +70,11 @@ impl AppState {
         ));
         let max_upload_bytes =
             parse_size(&config.storage.max_file_size).unwrap_or(15 * 1024 * 1024);
+        let search = Arc::new(weft_db::PostgresSearch::new(pool.clone()));
         let metrics_enabled = config.metrics.enabled;
         Self {
             pool,
+            search,
             storage,
             metrics,
             node: Arc::new(node),
@@ -150,8 +153,12 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/licence-dispute", post(licence_dispute))
         .route("/api/v1/admin/queue", get(admin_queue))
         .route("/api/v1/admin/content/{hash}/{action}", post(admin_action))
+        .route("/api/v1/admin/content/{hash}/licence", post(admin_licence))
         .route("/api/v1/admin/reports", get(admin_reports))
-        .route("/api/v1/admin/storage", get(admin_storage))
+        .route(
+            "/api/v1/admin/storage",
+            get(admin_storage).post(admin_storage_cleanup),
+        )
         .route(
             "/api/v1/admin/blocks",
             get(admin_blocks).post(add_admin_block),
@@ -338,7 +345,9 @@ async fn list_response(
         limit,
         offset,
     };
-    let rows = weft_db::list_content(&state.pool, &query)
+    let rows = state
+        .search
+        .search(&query)
         .await
         .map_err(ApiError::internal)?;
     let items: Vec<Value> = rows.iter().map(|row| summary(row, state)).collect();
@@ -605,6 +614,20 @@ async fn upload(
         )
     })?;
 
+    if let Some(max_size) = parse_size(&state.config.storage.max_size) {
+        let report = weft_db::storage_report(&state.pool)
+            .await
+            .map_err(ApiError::internal)?;
+        if report.bytes.saturating_add(bytes.len() as i64) > max_size as i64 {
+            state.metrics.upload_failed();
+            return Err(ApiError::new(
+                StatusCode::INSUFFICIENT_STORAGE,
+                "storage_full",
+                "The node storage budget is exhausted.",
+            ));
+        }
+    }
+
     if fields.title.chars().count() > state.config.upload.max_title_chars as usize {
         return Err(ApiError::bad("title_too_long", "The title is too long."));
     }
@@ -850,6 +873,43 @@ async fn admin_queue(
     Ok(Json(json!({ "items": items, "nextCursor": next })))
 }
 
+#[derive(Debug, Deserialize)]
+struct LicenceUpdate {
+    status: String,
+    #[serde(default)]
+    note: String,
+}
+
+async fn admin_licence(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    AxumPath(hash): AxumPath<String>,
+    Json(request): Json<LicenceUpdate>,
+) -> Result<Json<Value>, ApiError> {
+    require_admin(&state, &headers)?;
+    if !matches!(
+        request.status.as_str(),
+        "unverified" | "evidence_provided" | "verified_evidence" | "disputed" | "invalidated"
+    ) {
+        return Err(ApiError::bad(
+            "invalid_licence_status",
+            "Unknown licence status.",
+        ));
+    }
+    let row =
+        weft_db::set_licence_status(&state.pool, &hash, &request.status, &request.note, "admin")
+            .await
+            .map_err(ApiError::internal)?
+            .ok_or_else(|| {
+                ApiError::not_found("content_not_found", "No content exists for this hash.")
+            })?;
+    Ok(Json(json!({
+        "hash": row.hash,
+        "licenceStatus": row.licence_status,
+        "updatedAt": row.updated_at.to_rfc3339(),
+    })))
+}
+
 async fn admin_action(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1055,6 +1115,35 @@ async fn delete_admin_block(
     }
 }
 
+async fn admin_storage_cleanup(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, ApiError> {
+    require_admin(&state, &headers)?;
+    let hashes = weft_db::orphan_hashes(&state.pool)
+        .await
+        .map_err(ApiError::internal)?;
+    let mut deleted = 0_u64;
+    let mut bytes = 0_i64;
+    for hash in &hashes {
+        if let Ok(blob_hash) = BlobHash::parse(hash) {
+            if let Ok(Some(row)) = weft_db::get_blob_size(&state.pool, hash).await {
+                bytes = bytes.saturating_add(row);
+            }
+            let _ = state.storage.delete(&blob_hash);
+            let _ = state
+                .storage
+                .delete_thumbnail(&format!("thumbs/{hash}.jpg"));
+            if let Err(error) = weft_db::delete_blob_row(&state.pool, hash).await {
+                tracing::warn!(%error, hash, "could not delete orphan blob row");
+                continue;
+            }
+            deleted += 1;
+        }
+    }
+    Ok(Json(json!({ "deleted": deleted, "bytes": bytes })))
+}
+
 async fn admin_storage(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -1160,7 +1249,7 @@ fn manifest_json(state: &AppState, row: &ContentRow) -> Result<Value, ApiError> 
             "spdx": row.licence_spdx,
             "url": row.licence_url,
             "status": row.licence_status,
-            "evidence": [],
+            "evidence": row.evidence,
         },
         "moderation": {
             "state": row.status,

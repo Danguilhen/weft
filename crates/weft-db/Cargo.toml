@@ -8,6 +8,7 @@ license = "AGPL-3.0-or-later"
 repository = "https://github.com/Danguilhen/Weft"
 
 [dependencies]
+async-trait.workspace = true
 chrono.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true

@@ -233,6 +233,8 @@ All admin endpoints require `Authorization: Bearer <token>`.
 | `POST` | `/api/v1/admin/content/{hash}/reinstate` | Reverse a restriction or removal |
 | `GET` | `/api/v1/admin/reports` | Open reports |
 | `GET` | `/api/v1/admin/storage` | Blob/storage and orphan counters |
+| `POST` | `/api/v1/admin/storage` | Delete orphan blobs |
+| `POST` | `/api/v1/admin/content/{hash}/licence` | Set the local licence status |
 | `GET` | `/api/v1/admin/stats` | Storage, queue and traffic counters |
 | `GET` | `/api/v1/admin/blocks` | Local block rules |
 | `POST` | `/api/v1/admin/blocks` | Add a URL/domain/tag block rule |

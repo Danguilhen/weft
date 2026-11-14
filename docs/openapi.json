@@ -873,6 +873,93 @@
             "$ref": "#/components/responses/Unauthorized"
           }
         }
+      },
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete orphan blobs",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cleanup result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/content/{hash}/licence": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Update the local licence status",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Hash"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "status"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "unverified",
+                      "evidence_provided",
+                      "verified_evidence",
+                      "disputed",
+                      "invalidated"
+                    ]
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Licence status updated"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
       }
     },
     "/api/v1/admin/blocks": {
@@ -1182,6 +1269,10 @@
             "type": "string",
             "format": "uri"
           },
+          "source": {
+            "type": "string",
+            "format": "uri"
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -1332,6 +1423,10 @@
             "format": "date-time"
           },
           "origin": {
+            "type": "string",
+            "format": "uri"
+          },
+          "source": {
             "type": "string",
             "format": "uri"
           },

@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
+use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::{FromRow, Postgres, QueryBuilder};
@@ -18,7 +19,9 @@ SELECT c.id, c.hash, c.title, c.description, c.status,
        c.licence_spdx, c.licence_url, c.licence_claim, c.licence_status,
        c.source_url, c.views,
        c.published_at, c.created_at, c.updated_at, c.origin_node,
-       COALESCE(array_agg(t.tag ORDER BY t.tag) FILTER (WHERE t.tag IS NOT NULL), '{}') AS tags
+       COALESCE(array_agg(t.tag ORDER BY t.tag) FILTER (WHERE t.tag IS NOT NULL), '{}') AS tags,
+       COALESCE((SELECT array_agg(le.url ORDER BY le.created_at)
+                 FROM licence_evidence le WHERE le.content_id = c.id), '{}') AS evidence
 FROM content c
 JOIN blobs b ON b.hash = c.hash
 LEFT JOIN content_tags t ON t.content_id = c.id
@@ -50,6 +53,7 @@ pub struct ContentRow {
     pub updated_at: DateTime<Utc>,
     pub origin_node: String,
     pub tags: Vec<String>,
+    pub evidence: Vec<String>,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -96,6 +100,33 @@ impl Default for ContentQuery {
             limit: 20,
             offset: 0,
         }
+    }
+}
+
+/// A search backend abstraction. The PostgreSQL implementation is the default;
+/// a future Meilisearch adapter can implement the same contract.
+#[async_trait]
+pub trait SearchIndex: Send + Sync {
+    async fn search(&self, query: &ContentQuery) -> Result<Vec<ContentRow>, DbError>;
+}
+
+/// PostgreSQL-backed search.
+#[derive(Debug, Clone)]
+pub struct PostgresSearch {
+    pool: PgPool,
+}
+
+impl PostgresSearch {
+    #[must_use]
+    pub fn new(pool: PgPool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl SearchIndex for PostgresSearch {
+    async fn search(&self, query: &ContentQuery) -> Result<Vec<ContentRow>, DbError> {
+        list_content(&self.pool, query).await
     }
 }
 
@@ -548,6 +579,37 @@ pub async fn insert_licence_dispute(
     Ok(report_id)
 }
 
+/// Update the local licence status and record the admin decision.
+pub async fn set_licence_status(
+    pool: &PgPool,
+    hash: &str,
+    status: &str,
+    note: &str,
+    actor: &str,
+) -> Result<Option<ContentRow>, DbError> {
+    let mut tx = pool.begin().await?;
+    let content_id: Option<Uuid> = sqlx::query_scalar(
+        "UPDATE content SET licence_status = $2, updated_at = now() WHERE hash = $1 RETURNING id",
+    )
+    .bind(hash)
+    .bind(status)
+    .fetch_optional(&mut *tx)
+    .await?;
+    if let Some(content_id) = content_id {
+        sqlx::query(
+            "INSERT INTO audit_log (actor, action, target, detail) VALUES ($1, $2, $3, $4)",
+        )
+        .bind(actor)
+        .bind("content.licence")
+        .bind(hash)
+        .bind(serde_json::json!({ "status": status, "note": note, "contentId": content_id.to_string() }))
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
+    get_content(pool, hash, true).await
+}
+
 /// Recent reports for the admin surface.
 pub async fn list_reports(pool: &PgPool, limit: i64) -> Result<Vec<ReportRow>, DbError> {
     Ok(sqlx::query_as::<_, ReportRow>(
@@ -649,6 +711,36 @@ pub async fn delete_block(pool: &PgPool, id: Uuid) -> Result<bool, DbError> {
         .execute(pool)
         .await?;
     Ok(result.rows_affected() > 0)
+}
+
+/// Hashes with a blob but no content reference.
+pub async fn orphan_hashes(pool: &PgPool) -> Result<Vec<String>, DbError> {
+    Ok(sqlx::query_scalar(
+        r#"
+        SELECT b.hash FROM blobs b
+        WHERE NOT EXISTS (SELECT 1 FROM content c WHERE c.hash = b.hash)
+        ORDER BY b.hash
+        "#,
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Size of a blob row, used by the orphan cleanup report.
+pub async fn get_blob_size(pool: &PgPool, hash: &str) -> Result<Option<i64>, DbError> {
+    Ok(sqlx::query_scalar("SELECT size FROM blobs WHERE hash = $1")
+        .bind(hash)
+        .fetch_optional(pool)
+        .await?)
+}
+
+/// Delete a blob row after its bytes have been removed.
+pub async fn delete_blob_row(pool: &PgPool, hash: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM blobs WHERE hash = $1")
+        .bind(hash)
+        .execute(pool)
+        .await?;
+    Ok(())
 }
 
 #[derive(Debug, Clone, FromRow)]
