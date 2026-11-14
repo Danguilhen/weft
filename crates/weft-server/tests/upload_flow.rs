@@ -120,7 +120,28 @@ async fn upload_review_search_and_fetch() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     let body = to_bytes(response.into_body(), 8192).await.unwrap();
-    assert!(String::from_utf8_lossy(&body).contains(&hash));
+    let search_text = String::from_utf8_lossy(&body);
+    assert!(search_text.contains(&hash));
+    assert!(search_text.contains("https://example.org/original.gif"));
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/v1/media/{hash}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), 8192).await.unwrap();
+    let manifest: Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(
+        manifest["source"].as_str(),
+        Some("https://example.org/original.gif")
+    );
+    assert!(manifest["signature"]["value"].as_str().is_some());
 
     let response = app
         .clone()
@@ -230,6 +251,60 @@ async fn upload_review_search_and_fetch() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
+    let block = serde_json::json!({ "kind": "tag", "value": "cat" });
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/admin/blocks")
+                .header(header::AUTHORIZATION, "Bearer test-admin")
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(block.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    let block_id = serde_json::from_slice::<Value>(&body).unwrap()["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let blocked = multipart_body(gif, "Blocked GIF", "cat");
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "127.0.0.1")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(blocked))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/v1/admin/blocks/{block_id}"))
+                .header(header::AUTHORIZATION, "Bearer test-admin")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
     let response = app
         .clone()
         .oneshot(
@@ -281,7 +356,7 @@ fn multipart_body(file: &[u8], title: &str, tags: &str) -> Vec<u8> {
     body.extend_from_slice(file);
     body.extend_from_slice(
         format!(
-            "\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\n{title}\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"tags\"\r\n\r\n{tags}\r\n--{boundary}--\r\n"
+            "\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"title\"\r\n\r\n{title}\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"tags\"\r\n\r\n{tags}\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"source\"\r\n\r\nhttps://example.org/original.gif\r\n--{boundary}--\r\n"
         )
         .as_bytes(),
     );
@@ -304,4 +379,75 @@ printf '{"mime":"image/gif","width":16,"height":16,"frames":1,"duration_ms":0}'
     let mut permissions = std::fs::metadata(path).unwrap().permissions();
     permissions.set_mode(0o755);
     std::fs::set_permissions(path, permissions).unwrap();
+}
+
+#[tokio::test]
+#[ignore = "requires WEFT_TEST_DATABASE_URL"]
+async fn failed_validation_leaves_no_content() {
+    let url = std::env::var("WEFT_TEST_DATABASE_URL")
+        .expect("set WEFT_TEST_DATABASE_URL to a disposable PostgreSQL database");
+    let pool = weft_db::connect_url(&url, 2, Duration::from_secs(5))
+        .await
+        .expect("connect to PostgreSQL");
+    weft_db::migrate(&pool).await.expect("apply migrations");
+
+    let directory = tempfile::tempdir().expect("temp directory");
+    let worker = directory.path().join("weft-decode");
+    std::fs::write(&worker, "#!/bin/sh\necho 'not an image' >&2\nexit 1\n").unwrap();
+    let mut permissions = std::fs::metadata(&worker).unwrap().permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&worker, permissions).unwrap();
+
+    let mut config = AppConfig::default();
+    config.storage.path = directory.path().join("data").to_string_lossy().to_string();
+    config.decode.worker_path = worker.to_string_lossy().to_string();
+    let signer = NodeSigner::load_or_create(
+        directory.path().join("node.key"),
+        format!("{}#key-1", config.node.actor_url()),
+    )
+    .expect("node key");
+    let node = NodePublic::from_config(&config);
+    let storage = Arc::new(LocalStore::new(&config.storage.path).expect("storage"));
+    let state = AppState::new(
+        pool.clone(),
+        storage,
+        Arc::new(Metrics::default()),
+        node,
+        config,
+        signer,
+    );
+    let app = build_router(state);
+
+    let gif = b"GIF89a-invalid-worker";
+    let upload = multipart_body(gif, "Invalid", "test");
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "127.0.0.1")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(upload))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    let hash = weft_core::hash_bytes(gif).to_string();
+    let content: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM content WHERE hash = $1")
+        .bind(&hash)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let uploads: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM uploads WHERE hash = $1")
+        .bind(&hash)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(content, 0);
+    assert_eq!(uploads, 0);
 }

@@ -16,6 +16,7 @@ SELECT c.id, c.hash, c.title, c.description, c.status,
        b.mime, b.size, b.width, b.height, b.frames, b.duration_ms,
        b.storage_key, b.thumbnail_key,
        c.licence_spdx, c.licence_url, c.licence_claim, c.licence_status,
+       c.source_url, c.views,
        c.published_at, c.created_at, c.updated_at, c.origin_node,
        COALESCE(array_agg(t.tag ORDER BY t.tag) FILTER (WHERE t.tag IS NOT NULL), '{}') AS tags
 FROM content c
@@ -42,6 +43,8 @@ pub struct ContentRow {
     pub licence_url: Option<String>,
     pub licence_claim: Option<String>,
     pub licence_status: String,
+    pub source_url: Option<String>,
+    pub views: i64,
     pub published_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -77,6 +80,7 @@ pub struct ReportRow {
 pub struct ContentQuery {
     pub text: String,
     pub tags: Vec<String>,
+    pub blocked_tags: Vec<String>,
     pub sort: String,
     pub limit: i64,
     pub offset: i64,
@@ -87,6 +91,7 @@ impl Default for ContentQuery {
         Self {
             text: String::new(),
             tags: Vec::new(),
+            blocked_tags: Vec::new(),
             sort: "newest".to_string(),
             limit: 20,
             offset: 0,
@@ -197,6 +202,12 @@ pub async fn list_content(
             .push_bind(filter.tags.clone())
             .push("))");
     }
+    if !filter.blocked_tags.is_empty() {
+        query
+            .push(" AND NOT EXISTS (SELECT 1 FROM content_tags bt WHERE bt.content_id = c.id AND bt.tag = ANY(")
+            .push_bind(filter.blocked_tags.clone())
+            .push("))");
+    }
 
     query.push(" GROUP BY c.id, b.hash");
     if filter.sort == "relevance" && !text.is_empty() {
@@ -204,6 +215,8 @@ pub async fn list_content(
             .push(" ORDER BY ts_rank(c.search, websearch_to_tsquery('simple', ")
             .push_bind(text.to_string())
             .push(")) DESC, c.published_at DESC NULLS LAST, c.id DESC");
+    } else if filter.sort == "trending" {
+        query.push(" ORDER BY c.views DESC, c.published_at DESC NULLS LAST, c.id DESC");
     } else {
         query.push(" ORDER BY c.published_at DESC NULLS LAST, c.id DESC");
     }
@@ -267,6 +280,7 @@ pub struct NewUpload<'a> {
     pub licence_url: Option<&'a str>,
     pub licence_claim: Option<&'a str>,
     pub licence_status: &'a str,
+    pub source_url: Option<&'a str>,
     pub licence_evidence: &'a [String],
     pub tags: &'a [String],
     pub review: &'a str,
@@ -310,10 +324,12 @@ pub async fn record_upload(
         r#"
         INSERT INTO content
             (hash, title, description, origin_node, status, licence_spdx, licence_url,
-             licence_claim, licence_status, published_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+             licence_claim, licence_status, source_url, published_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
                 CASE WHEN $5 = 'active' THEN now() ELSE NULL END)
-        ON CONFLICT (hash, origin_node) DO UPDATE SET updated_at = now()
+        ON CONFLICT (hash, origin_node) DO UPDATE
+        SET updated_at = now(),
+            source_url = COALESCE(EXCLUDED.source_url, content.source_url)
         RETURNING id, status
         "#,
     )
@@ -326,6 +342,7 @@ pub async fn record_upload(
     .bind(upload.licence_url)
     .bind(upload.licence_claim)
     .bind(upload.licence_status)
+    .bind(upload.source_url)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -582,6 +599,83 @@ pub async fn delete_blob_if_orphan(pool: &PgPool, hash: &str) -> Result<bool, Db
         .execute(pool)
         .await?;
     Ok(true)
+}
+
+/// Increment the local view counter for an active content row.
+pub async fn increment_views(pool: &PgPool, hash: &str) -> Result<(), DbError> {
+    sqlx::query("UPDATE content SET views = views + 1 WHERE hash = $1 AND status = 'active'")
+        .bind(hash)
+        .execute(pool)
+        .await?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct BlockRule {
+    pub id: Uuid,
+    pub kind: String,
+    pub value: String,
+    pub reason: String,
+    pub created_at: DateTime<Utc>,
+}
+
+pub async fn block_rules(pool: &PgPool) -> Result<Vec<BlockRule>, DbError> {
+    Ok(sqlx::query_as::<_, BlockRule>(
+        "SELECT id, kind, value, reason, created_at FROM node_blocks ORDER BY created_at DESC",
+    )
+    .fetch_all(pool)
+    .await?)
+}
+
+pub async fn add_block(
+    pool: &PgPool,
+    kind: &str,
+    value: &str,
+    reason: &str,
+) -> Result<Uuid, DbError> {
+    Ok(sqlx::query_scalar(
+        "INSERT INTO node_blocks (kind, value, reason) VALUES ($1, $2, $3) RETURNING id",
+    )
+    .bind(kind)
+    .bind(value)
+    .bind(reason)
+    .fetch_one(pool)
+    .await?)
+}
+
+pub async fn delete_block(pool: &PgPool, id: Uuid) -> Result<bool, DbError> {
+    let result = sqlx::query("DELETE FROM node_blocks WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await?;
+    Ok(result.rows_affected() > 0)
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct StorageReport {
+    pub blobs: i64,
+    pub bytes: i64,
+    pub orphan_blobs: i64,
+    pub orphan_bytes: i64,
+}
+
+pub async fn storage_report(pool: &PgPool) -> Result<StorageReport, DbError> {
+    Ok(sqlx::query_as::<_, StorageReport>(
+        r#"
+        SELECT
+            COUNT(*)::bigint AS blobs,
+            COALESCE(SUM(b.size), 0)::bigint AS bytes,
+            COUNT(*) FILTER (WHERE NOT EXISTS (
+                SELECT 1 FROM content c WHERE c.hash = b.hash
+            ))::bigint AS orphan_blobs,
+            COALESCE(SUM(b.size) FILTER (WHERE NOT EXISTS (
+                SELECT 1 FROM content c WHERE c.hash = b.hash
+            )), 0)::bigint AS orphan_bytes
+        FROM blobs b
+        "#,
+    )
+    .fetch_one(pool)
+    .await?)
 }
 
 #[derive(Debug, Error)]

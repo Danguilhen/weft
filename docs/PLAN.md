@@ -44,20 +44,12 @@ Scope and acceptance: [`MVP.md`](MVP.md).
 
 ### Remaining
 
-- Add local URL/domain and tag block rules, and apply them during upload and
-  indexing.
-- Add upload/decode/storage metrics and the orphan-blob/quota report.
-- Serve the OpenAPI document at `/api/openapi.json` and update
-  `docs/openapi.yaml` for the implemented routes.
+- Add a search-index trait before replacing PostgreSQL; keep the current FTS
+  query as the default.
 - Add licence-evidence verification actions and tests for the licence state
   machine beyond the initial claim.
-- Add view-based trending and a search-index trait before replacing PostgreSQL.
-- Store and expose the upload source/attribution field.
-- Add a failed-validation cleanup test and a duplicate/idempotent upload test.
-- Add a real-worker integration test (the current upload test uses a fake
-  worker) and tests for reject, restrict, report and dispute.
-- Apply rlimits/sandboxing to `weft-decode` on Linux (the worker is currently a
-  separate process with limits enforced by the server and by the decoder).
+- Add a duplicate/idempotent upload test and tests for dispute/reject.
+- Add orphan deletion and storage quota enforcement on top of the storage report.
 - Verify the first CI run, the container build and the Compose health check.
 - Run the acceptance demo on the supported 2 vCPU / 2 GB / 20 GB profile and
   record the numbers.

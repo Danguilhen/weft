@@ -2,6 +2,7 @@
 target
 graphify-out
 .graphify
-docs
+docs/*
+!docs/openapi.json
 deploy/.env
 *.log

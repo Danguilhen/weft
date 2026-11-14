@@ -349,6 +349,78 @@ paths:
             application/json:
               schema: { type: object, additionalProperties: true }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/reports:
+    get:
+      tags: [admin]
+      summary: Recent reports
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Reports
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/storage:
+    get:
+      tags: [admin]
+      summary: Storage and orphan-blob report
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Storage counters
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/blocks:
+    get:
+      tags: [admin]
+      summary: Local block rules
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Block rules
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [admin]
+      summary: Add a block rule
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BlockRequest' }
+      responses:
+        '201': { description: Block rule created }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /api/v1/admin/blocks/{id}:
+    delete:
+      tags: [admin]
+      summary: Delete a block rule
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '204': { description: Deleted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/openapi.json:
+    get:
+      summary: OpenAPI document
+      responses:
+        '200':
+          description: OpenAPI JSON
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
 components:
   parameters:
     Hash:
@@ -619,6 +691,13 @@ components:
         endedAt: { type: string, format: date-time }
         nonce: { type: string }
         signature: { $ref: '#/components/schemas/Signature' }
+    BlockRequest:
+      type: object
+      required: [kind, value]
+      properties:
+        kind: { type: string, enum: [node, domain, url_prefix, tag] }
+        value: { type: string }
+        reason: { type: string }
     ErrorEnvelope:
       type: object
       required: [error]

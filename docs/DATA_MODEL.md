@@ -86,6 +86,8 @@ Local listing metadata.
 | `licence_url` | `text` | Nullable |
 | `licence_claim` | `text` | Free-text claim |
 | `licence_status` | `licence_status` | |
+| `source_url` | `text` | Optional original source/attribution |
+| `views` | `bigint` | Local view counter for trending |
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
 | `published_at` | `timestamptz` | Nullable |
@@ -402,8 +404,9 @@ Run an orphan detector periodically and report, never delete silently.
 - Forward-only SQL migrations under `migrations/`, applied by `weft migrate`.
 - Never edit an applied migration; add a new one.
 - Destructive changes require a backup step in `docs/OPERATIONS.md`.
-- The first migration is `0001_init.sql`; the schema version is tracked in
-  `_sqlx_migrations`.
+- The first migration is `0001_init.sql`; `0002` drops the content/hash FK so
+  tombstones can outlive blobs, and `0003` adds source/attribution and view
+  counters. The schema version is tracked in `_sqlx_migrations`.
 
 ## 9. Open points
 

@@ -12,11 +12,11 @@ Status: Milestone 1 in progress; the standalone vertical slice works. Started
 | Design review | Approved for Milestones 0 and 1; CI verification pending | `DESIGN_REVIEW.md` |
 | Implementation | Milestone 1 in progress; vertical slice works | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust unit tests | 26 passing | `cargo test --workspace` |
+| Rust tests | 27 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
-| Standalone node MVP | Partial: upload → review → search → media works | `upload_flow` test |
+| Standalone node MVP | Partial: upload → review → search → media + admin works | `upload_flow` test |
 | ActivityPub federation | Not started | — |
 | Media replication | Not started | — |
 | Contribution accounting | Not started | — |
@@ -42,9 +42,10 @@ claim otherwise in README, issues or release notes.
 - `weft init`, `weft keygen`, `weft migrate`, `weft doctor` and `weft serve`
   commands. Relative config, key and storage paths are resolved against the
   configuration file directory.
-- First PostgreSQL migration (`0001_init.sql`) covering nodes, keys, blobs,
-  content, tags, sources, evidence, uploads, reports, moderation events,
-  federation outbox/inbox, block rules and audit log.
+- PostgreSQL migrations (`0001`–`0003`) covering nodes, keys, blobs, content,
+  tags, sources, evidence, uploads, reports, moderation events, federation
+  outbox/inbox, block rules, audit log, tombstones, source metadata and view
+  counters.
 - Content-addressed local storage with atomic writes, hash verification and
   thumbnails.
 - A separate `weft-decode` worker for GIF/PNG/JPEG/WebP with dimensions, frame
@@ -53,7 +54,10 @@ claim otherwise in README, issues or release notes.
   buckets, quarantine, licence evidence and reports/disputes.
 - Search, newest/trending lists, tags, signed manifests, sources, byte serving
   with Range/ETag/Digest, and admin queue/approve/reject/restrict/remove/
-  reinstate/stats/reports.
+  reinstate/stats/reports/storage/blocks.
+- Local URL/domain/tag block rules applied at upload and public retrieval.
+- Source/attribution metadata, view counts, upload/decode/storage metrics and
+  `/api/openapi.json`.
 - `GET /healthz`, `GET /readyz`, `GET /metrics` and `GET /api/v1/node`.
 - `flake.nix`, `shell.nix` and `.envrc` for a reproducible Nix dev shell and
   package build.
@@ -67,8 +71,7 @@ claim otherwise in README, issues or release notes.
 
 ## What does not exist
 
-- Local block rules, orphan/quota reporting and upload/decode/storage metrics.
-- OpenAPI JSON serving (`/api/openapi.json`).
+- Orphan deletion/quota enforcement (the storage report is read-only).
 - A deployed or production-tested node.
 - ActivityPub federation, replication and accounting.
 - Jabu animation fix or GIF picker.
@@ -78,9 +81,10 @@ claim otherwise in README, issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust unit tests | 26 | `cargo test --workspace` |
+| Rust tests | 27 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
-| Upload/review/search/media flow | 1 | `... --test upload_flow -- --ignored` |
+| Upload/review/search/media flow | 2 | `... --test upload_flow -- --ignored` |
+| Real worker | 1 | `cargo test -p weft-validation --test worker_smoke` |
 | Protocol golden vectors | 0 | Milestone 2 |
 | Federation interop | 0 | Milestone 2 |
 

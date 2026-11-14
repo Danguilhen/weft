@@ -41,8 +41,27 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     let input = input.ok_or("missing --input")?;
     let thumbnail = thumbnail.ok_or("missing --thumbnail")?;
+    limit_resources(limits.max_decoded_bytes)?;
     let media = decode_file(&input, &thumbnail, limits)?;
     println!("{}", serde_json::to_string(&media)?);
+    Ok(())
+}
+
+#[cfg(unix)]
+fn limit_resources(max_decoded_bytes: u64) -> Result<(), Box<dyn std::error::Error>> {
+    use nix::sys::resource::{setrlimit, Resource};
+    let address_space = max_decoded_bytes.saturating_add(256 * 1024 * 1024);
+    // Best-effort hardening: rlimits are a second layer behind the decoder and
+    // the server timeout.
+    let _ = setrlimit(Resource::RLIMIT_AS, address_space, address_space);
+    let _ = setrlimit(Resource::RLIMIT_CPU, 30, 30);
+    let _ = setrlimit(Resource::RLIMIT_FSIZE, 64 * 1024 * 1024, 64 * 1024 * 1024);
+    let _ = setrlimit(Resource::RLIMIT_NOFILE, 64, 64);
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn limit_resources(_max_decoded_bytes: u64) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 

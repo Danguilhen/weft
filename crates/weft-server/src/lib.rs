@@ -15,7 +15,7 @@ use axum::extract::{DefaultBodyLimit, Multipart, Path as AxumPath, Query, Reques
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use base64::Engine;
 use serde::Deserialize;
@@ -25,15 +25,18 @@ use sqlx::PgPool;
 use thiserror::Error;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
+use url::Url;
 use uuid::Uuid;
 use weft_core::config::{AppConfig, LoggingConfig};
 use weft_core::{hash_bytes, parse_size, BlobHash, ContentId, NodeSigner};
-use weft_db::{self, ContentQuery, ContentRow, DbError, NewUpload, RecordedUpload};
+use weft_db::{self, BlockRule, ContentQuery, ContentRow, DbError, NewUpload, RecordedUpload};
 use weft_storage::{BlobStore, LocalStore, StorageError};
 
 use crate::decode::DecodeWorkerError;
 use crate::metrics::Metrics;
 use crate::rate_limit::{client_key, RateLimiter};
+
+const OPENAPI_JSON: &str = include_str!("../../../docs/openapi.json");
 
 #[derive(Clone)]
 pub struct AppState {
@@ -148,7 +151,14 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/v1/admin/queue", get(admin_queue))
         .route("/api/v1/admin/content/{hash}/{action}", post(admin_action))
         .route("/api/v1/admin/reports", get(admin_reports))
-        .route("/api/v1/admin/stats", get(admin_stats));
+        .route("/api/v1/admin/storage", get(admin_storage))
+        .route(
+            "/api/v1/admin/blocks",
+            get(admin_blocks).post(add_admin_block),
+        )
+        .route("/api/v1/admin/blocks/{id}", delete(delete_admin_block))
+        .route("/api/v1/admin/stats", get(admin_stats))
+        .route("/api/openapi.json", get(openapi));
 
     if metrics_enabled {
         router = router.route("/metrics", get(metrics));
@@ -312,9 +322,18 @@ async fn list_response(
     tags.sort();
     tags.dedup();
     let sort = params.sort.unwrap_or_else(|| default_sort.to_string());
+    let rules = weft_db::block_rules(&state.pool)
+        .await
+        .map_err(ApiError::internal)?;
+    let blocked_tags: Vec<String> = rules
+        .iter()
+        .filter(|rule| rule.kind == "tag")
+        .map(|rule| rule.value.to_ascii_lowercase())
+        .collect();
     let query = ContentQuery {
         text: params.q.unwrap_or_default(),
         tags,
+        blocked_tags,
         sort,
         limit,
         offset,
@@ -351,6 +370,7 @@ async fn manifest(
                 "No active content exists for this hash.",
             )
         })?;
+    ensure_not_blocked(&state, &row).await?;
     Ok(Json(manifest_json(&state, &row)?))
 }
 
@@ -367,6 +387,7 @@ async fn sources(
                 "No active content exists for this hash.",
             )
         })?;
+    ensure_not_blocked(&state, &row).await?;
     let mut value = json!({
         "contentId": content_id(&row)?,
         "sources": [source_value(&state, &row)]
@@ -410,12 +431,16 @@ async fn media_response(
                 "No active content exists for this hash.",
             )
         })?;
+    ensure_not_blocked(state, &row).await?;
     let blob_hash = BlobHash::parse(&row.hash).map_err(ApiError::internal)?;
     let bytes = state.storage.get(&blob_hash).map_err(|error| match error {
         StorageError::NotFound(_) => {
             ApiError::not_found("content_not_found", "The blob is missing from storage.")
         }
-        other => ApiError::internal(other),
+        other => {
+            state.metrics.upload_failed();
+            ApiError::internal(other)
+        }
     })?;
 
     let total = bytes.len();
@@ -468,6 +493,12 @@ async fn media_response(
             format!("bytes {start}-{end}/{total}"),
         );
     }
+    if !head_only {
+        state.metrics.media_served(length as u64);
+        if let Err(error) = weft_db::increment_views(&state.pool, &row.hash).await {
+            tracing::warn!(%error, "could not increment views");
+        }
+    }
     builder.body(body).map_err(ApiError::internal)
 }
 
@@ -495,6 +526,7 @@ struct UploadFields {
     title: String,
     description: String,
     tags: String,
+    source: String,
     licence: String,
     licence_url: String,
     evidence: String,
@@ -547,6 +579,7 @@ async fn upload(
                 "title" => fields.title = value,
                 "description" => fields.description = value,
                 "tags" => fields.tags = value,
+                "source" => fields.source = value,
                 "licence" => fields.licence = value,
                 "licenceUrl" => fields.licence_url = value,
                 "evidence" => {
@@ -564,6 +597,7 @@ async fn upload(
         .file
         .ok_or_else(|| ApiError::bad("missing_file", "The `file` field is required."))?;
     let format = weft_validation::sniff(&bytes).map_err(|_| {
+        state.metrics.upload_failed();
         ApiError::new(
             StatusCode::UNSUPPORTED_MEDIA_TYPE,
             "unsupported_media_type",
@@ -592,6 +626,18 @@ async fn upload(
         .filter(|url| !url.is_empty())
         .map(str::to_string)
         .collect();
+    let rules = weft_db::block_rules(&state.pool)
+        .await
+        .map_err(ApiError::internal)?;
+    let source = (!fields.source.trim().is_empty()).then_some(fields.source.trim());
+    if let Some(rule) = blocked_by(&rules, &tags, source) {
+        state.metrics.upload_failed();
+        return Err(ApiError::new(
+            StatusCode::FORBIDDEN,
+            "blocked",
+            format!("This node blocks {rule}."),
+        ));
+    }
     let licence_status = if evidence.is_empty() {
         "unverified"
     } else {
@@ -611,17 +657,28 @@ async fn upload(
     )
     .await
     .map_err(|error| match error {
-        DecodeWorkerError::Rejected(detail) => ApiError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation_failed",
-            detail,
-        ),
-        DecodeWorkerError::Timeout => ApiError::new(
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "validation_failed",
-            "Media decoding timed out.",
-        ),
-        other => ApiError::internal(other),
+        DecodeWorkerError::Rejected(detail) => {
+            state.metrics.decode_failed();
+            state.metrics.upload_failed();
+            ApiError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_failed",
+                detail,
+            )
+        }
+        DecodeWorkerError::Timeout => {
+            state.metrics.decode_failed();
+            state.metrics.upload_failed();
+            ApiError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation_failed",
+                "Media decoding timed out.",
+            )
+        }
+        other => {
+            state.metrics.upload_failed();
+            ApiError::internal(other)
+        }
     })?;
 
     let hash = hash_bytes(&bytes);
@@ -659,6 +716,7 @@ async fn upload(
             licence_url: (!fields.licence_url.is_empty()).then_some(fields.licence_url.as_str()),
             licence_claim: (!fields.licence.is_empty()).then_some(fields.licence.as_str()),
             licence_status,
+            source_url: (!fields.source.trim().is_empty()).then_some(fields.source.trim()),
             licence_evidence: &evidence,
             tags: &tags,
             review,
@@ -673,6 +731,8 @@ async fn upload(
         tracing::warn!(hash = %hash, "decoder and server MIME disagreement");
     }
 
+    state.metrics.upload_accepted();
+    state.metrics.stored(bytes.len() as u64);
     let content_id = hash.to_content_id().to_string();
     let manifest_url = format!(
         "{}/api/v1/media/{}",
@@ -876,6 +936,148 @@ async fn admin_stats(
     })))
 }
 
+async fn ensure_not_blocked(state: &AppState, row: &ContentRow) -> Result<(), ApiError> {
+    let rules = weft_db::block_rules(&state.pool)
+        .await
+        .map_err(ApiError::internal)?;
+    if blocked_by(&rules, &row.tags, row.source_url.as_deref()).is_some() {
+        return Err(ApiError::not_found(
+            "content_not_found",
+            "No active content exists for this hash.",
+        ));
+    }
+    Ok(())
+}
+
+fn blocked_by(rules: &[BlockRule], tags: &[String], source: Option<&str>) -> Option<String> {
+    let host = source
+        .and_then(|value| Url::parse(value).ok())
+        .and_then(|url| url.host_str().map(str::to_ascii_lowercase));
+    for rule in rules {
+        let matched = match rule.kind.as_str() {
+            "tag" => tags.iter().any(|tag| tag.eq_ignore_ascii_case(&rule.value)),
+            "domain" => host.as_deref().is_some_and(|host| {
+                host == rule.value || host.ends_with(&format!(".{}", rule.value))
+            }),
+            "url_prefix" => source.is_some_and(|source| source.starts_with(&rule.value)),
+            _ => false,
+        };
+        if matched {
+            return Some(format!("{} {}", rule.kind, rule.value));
+        }
+    }
+    None
+}
+
+async fn admin_blocks(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, ApiError> {
+    require_admin(&state, &headers)?;
+    let rules = weft_db::block_rules(&state.pool)
+        .await
+        .map_err(ApiError::internal)?;
+    let items: Vec<Value> = rules
+        .iter()
+        .map(|rule| {
+            json!({
+                "id": rule.id.to_string(),
+                "kind": rule.kind,
+                "value": rule.value,
+                "reason": rule.reason,
+                "createdAt": rule.created_at.to_rfc3339(),
+            })
+        })
+        .collect();
+    Ok(Json(json!({ "items": items })))
+}
+
+#[derive(Debug, Deserialize)]
+struct BlockRequest {
+    kind: String,
+    value: String,
+    reason: Option<String>,
+}
+
+async fn add_admin_block(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<BlockRequest>,
+) -> Result<(StatusCode, Json<Value>), ApiError> {
+    require_admin(&state, &headers)?;
+    if !matches!(
+        request.kind.as_str(),
+        "node" | "domain" | "url_prefix" | "tag"
+    ) {
+        return Err(ApiError::bad(
+            "invalid_block_kind",
+            "kind must be node, domain, url_prefix or tag.",
+        ));
+    }
+    let value = request.value.trim();
+    if value.is_empty() {
+        return Err(ApiError::bad("invalid_block_value", "A value is required."));
+    }
+    let value = if matches!(request.kind.as_str(), "domain" | "tag") {
+        value.to_ascii_lowercase()
+    } else {
+        value.to_string()
+    };
+    let id = weft_db::add_block(
+        &state.pool,
+        &request.kind,
+        &value,
+        request.reason.as_deref().unwrap_or_default(),
+    )
+    .await
+    .map_err(ApiError::internal)?;
+    Ok((StatusCode::CREATED, Json(json!({ "id": id.to_string() }))))
+}
+
+async fn delete_admin_block(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    AxumPath(id): AxumPath<String>,
+) -> Result<StatusCode, ApiError> {
+    require_admin(&state, &headers)?;
+    let id =
+        Uuid::parse_str(&id).map_err(|_| ApiError::bad("invalid_block_id", "Invalid block id."))?;
+    if weft_db::delete_block(&state.pool, id)
+        .await
+        .map_err(ApiError::internal)?
+    {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(ApiError::not_found(
+            "block_not_found",
+            "No such block rule.",
+        ))
+    }
+}
+
+async fn admin_storage(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, ApiError> {
+    require_admin(&state, &headers)?;
+    let report = weft_db::storage_report(&state.pool)
+        .await
+        .map_err(ApiError::internal)?;
+    Ok(Json(json!({
+        "blobs": report.blobs,
+        "bytes": report.bytes,
+        "orphanBlobs": report.orphan_blobs,
+        "orphanBytes": report.orphan_bytes,
+    })))
+}
+
+async fn openapi() -> impl IntoResponse {
+    (
+        [("content-type", "application/json; charset=utf-8")],
+        OPENAPI_JSON,
+    )
+}
+
 fn require_admin(state: &AppState, headers: &HeaderMap) -> Result<(), ApiError> {
     let expected = state.config.server.admin_token.trim();
     if expected.is_empty() {
@@ -922,6 +1124,7 @@ fn summary(row: &ContentRow, state: &AppState) -> Value {
         },
         "mediaUrl": format!("{base}/media/{hash}"),
         "manifestUrl": format!("{base}/api/v1/media/{hash}"),
+        "source": row.source_url,
         "createdAt": row.created_at.to_rfc3339(),
         "status": row.status,
     })
@@ -950,6 +1153,7 @@ fn manifest_json(state: &AppState, row: &ContentRow) -> Result<Value, ApiError> 
         "createdAt": row.created_at.to_rfc3339(),
         "updatedAt": row.updated_at.to_rfc3339(),
         "origin": row.origin_node,
+        "source": row.source_url,
         "sources": [source],
         "licence": {
             "claim": row.licence_claim,

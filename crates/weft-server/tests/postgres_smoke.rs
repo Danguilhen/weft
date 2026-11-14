@@ -94,6 +94,7 @@ async fn health_ready_metrics_and_node_descriptor() {
     assert!(String::from_utf8_lossy(&body).contains("weft_requests_total"));
 
     let response = app
+        .clone()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/node")
@@ -107,4 +108,17 @@ async fn health_ready_metrics_and_node_descriptor() {
     let text = String::from_utf8_lossy(&body);
     assert!(text.contains("weft-wmp/0.1"));
     assert!(text.contains("127.0.0.1"));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/openapi.json")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), 65536).await.unwrap();
+    assert!(String::from_utf8_lossy(&body).contains("\"openapi\""));
 }

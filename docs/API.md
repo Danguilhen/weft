@@ -232,12 +232,18 @@ All admin endpoints require `Authorization: Bearer <token>`.
 | `POST` | `/api/v1/admin/content/{hash}/restrict` | Keep the row but stop public serving |
 | `POST` | `/api/v1/admin/content/{hash}/reinstate` | Reverse a restriction or removal |
 | `GET` | `/api/v1/admin/reports` | Open reports |
+| `GET` | `/api/v1/admin/storage` | Blob/storage and orphan counters |
 | `GET` | `/api/v1/admin/stats` | Storage, queue and traffic counters |
 | `GET` | `/api/v1/admin/blocks` | Local block rules |
 | `POST` | `/api/v1/admin/blocks` | Add a URL/domain/tag block rule |
 | `DELETE` | `/api/v1/admin/blocks/{id}` | Remove a block rule |
 
 Mutating admin calls write an audit entry.
+
+### `GET /api/openapi.json`
+
+Serves the generated OpenAPI JSON for this node. The draft source is
+[`openapi.yaml`](openapi.yaml); update both together.
 
 ## 9. Errors
 
