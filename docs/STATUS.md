@@ -108,8 +108,9 @@ claim otherwise in README, issues or release notes.
 ## Acceptance run (2026-11-14)
 
 The ten-step demo in [`MVP.md`](MVP.md) was run against a local PostgreSQL 16
-database with the release `weft` and `weft-decode` binaries. The service ran in
-a transient systemd user unit capped at `MemoryMax=2G`, `MemorySwapMax=0` and
+database using the release `weft` and `weft-decode` binaries in place of the
+Compose start (Docker is unavailable here). The service ran in a transient
+systemd user unit capped at `MemoryMax=2G`, `MemorySwapMax=0` and
 `CPUQuota=200%`, which is the supported 2 vCPU / 2 GB profile (the host itself
 is larger). Disk is 38 GB free, above the 20 GB floor.
 
@@ -128,8 +129,7 @@ is larger). Disk is 38 GB free, above the 20 GB floor.
 Peak cgroup memory was 4.1 MB and CPU time 0.08 s for the upload, review,
 search, media, Range and removal flow with a small GIF. These numbers bound the
 idle/control-plane cost only; decoding limits are covered by the worker tests.
-The Compose start (`docker compose up -d`) was not run because Docker is not
-installed on this host; it remains the CI gate.
+The Compose acceptance step remains the CI gate.
 
 ## Next milestone
 
