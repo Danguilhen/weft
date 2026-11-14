@@ -132,7 +132,9 @@ is larger). Disk is 38 GB free, above the 20 GB floor.
 Peak cgroup memory was 4.1 MB and CPU time 0.08 s for the upload, review,
 search, media, Range and removal flow with a small GIF. These numbers bound the
 idle/control-plane cost only; decoding limits are covered by the worker tests.
-The Compose acceptance step remains the CI gate.
+The Compose acceptance step remains the CI gate. Its configuration was
+validated locally with `docker-compose config` (Compose 5.6.0); only the image
+build and health-check start are unrun.
 
 ## Next milestone
 
