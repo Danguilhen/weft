@@ -20,7 +20,7 @@ use tower::ServiceExt;
 use weft_core::{AppConfig, NodeSigner};
 use weft_server::metrics::Metrics;
 use weft_server::{build_router, AppState, NodePublic};
-use weft_storage::LocalStore;
+use weft_storage::{BlobStore, LocalStore};
 
 #[tokio::test]
 #[ignore = "requires WEFT_TEST_DATABASE_URL"]
@@ -572,4 +572,130 @@ async fn failed_validation_leaves_no_content() {
         .unwrap();
     assert_eq!(content, 0);
     assert_eq!(uploads, 0);
+}
+
+#[tokio::test]
+#[ignore = "requires WEFT_TEST_DATABASE_URL"]
+async fn orphan_cleanup_deletes_unreferenced_blob() {
+    let url = std::env::var("WEFT_TEST_DATABASE_URL")
+        .expect("set WEFT_TEST_DATABASE_URL to a disposable PostgreSQL database");
+    let pool = weft_db::connect_url(&url, 2, Duration::from_secs(5))
+        .await
+        .expect("connect to PostgreSQL");
+    weft_db::migrate(&pool).await.expect("apply migrations");
+
+    let directory = tempfile::tempdir().expect("temp directory");
+    let mut config = AppConfig::default();
+    config.server.admin_token = "test-admin".to_string();
+    let storage = Arc::new(LocalStore::new(directory.path().join("data")).expect("storage"));
+    let bytes = b"GIF89a-orphan";
+    let hash = weft_core::hash_bytes(bytes);
+    storage.put(&hash, bytes).expect("store orphan");
+    sqlx::query(
+        "INSERT INTO blobs (hash, size, mime, storage_key, verified_at) VALUES ($1, $2, 'image/gif', $3, now()) ON CONFLICT (hash) DO NOTHING",
+    )
+    .bind(hash.to_string())
+    .bind(bytes.len() as i64)
+    .bind(hash.to_string())
+    .execute(&pool)
+    .await
+    .expect("insert orphan row");
+
+    let signer = NodeSigner::load_or_create(
+        directory.path().join("node.key"),
+        format!("{}#key-1", config.node.actor_url()),
+    )
+    .expect("node key");
+    let node = NodePublic::from_config(&config);
+    let state = AppState::new(
+        pool.clone(),
+        storage.clone(),
+        Arc::new(Metrics::default()),
+        node,
+        config,
+        signer,
+    );
+    let app = build_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/admin/storage")
+                .header(header::AUTHORIZATION, "Bearer test-admin")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    let cleaned: Value = serde_json::from_slice(&body).unwrap();
+    assert!(cleaned["deleted"].as_u64().unwrap() >= 1);
+    assert!(!storage.exists(&hash).unwrap());
+    let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM blobs WHERE hash = $1")
+        .bind(hash.to_string())
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(remaining, 0);
+}
+
+#[tokio::test]
+#[ignore = "requires WEFT_TEST_DATABASE_URL"]
+async fn rejects_an_upload_over_the_storage_budget() {
+    let url = std::env::var("WEFT_TEST_DATABASE_URL")
+        .expect("set WEFT_TEST_DATABASE_URL to a disposable PostgreSQL database");
+    let pool = weft_db::connect_url(&url, 2, Duration::from_secs(5))
+        .await
+        .expect("connect to PostgreSQL");
+    weft_db::migrate(&pool).await.expect("apply migrations");
+
+    let directory = tempfile::tempdir().expect("temp directory");
+    let mut config = AppConfig::default();
+    config.server.admin_token = "test-admin".to_string();
+    config.storage.path = directory.path().join("data").to_string_lossy().to_string();
+    config.storage.max_size = "1".to_string();
+    let signer = NodeSigner::load_or_create(
+        directory.path().join("node.key"),
+        format!("{}#key-1", config.node.actor_url()),
+    )
+    .expect("node key");
+    let node = NodePublic::from_config(&config);
+    let storage = Arc::new(LocalStore::new(&config.storage.path).expect("storage"));
+    let state = AppState::new(
+        pool.clone(),
+        storage,
+        Arc::new(Metrics::default()),
+        node,
+        config,
+        signer,
+    );
+    let app = build_router(state);
+
+    let gif = b"GIF89a-over-budget";
+    let upload = multipart_body(gif, "Too large", "test");
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "127.0.0.1")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(upload))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::INSUFFICIENT_STORAGE);
+    let hash = weft_core::hash_bytes(gif).to_string();
+    let content: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM content WHERE hash = $1")
+        .bind(hash)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(content, 0);
 }

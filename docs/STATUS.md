@@ -83,7 +83,7 @@ claim otherwise in README, issues or release notes.
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
 | Rust tests | 27 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
-| Upload/review/search/media flow | 2 | `... --test upload_flow -- --ignored` |
+| Upload/review/search/media flow | 4 | `... --test upload_flow -- --ignored` |
 | Real worker | 1 | `cargo test -p weft-validation --test worker_smoke` |
 | Protocol golden vectors | 0 | Milestone 2 |
 | Federation interop | 0 | Milestone 2 |
