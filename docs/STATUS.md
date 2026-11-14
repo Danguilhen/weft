@@ -12,7 +12,7 @@ Status: Milestone 1 in progress; the standalone vertical slice works. Started
 | Design review | Approved for Milestones 0 and 1; CI verification pending | `DESIGN_REVIEW.md` |
 | Implementation | Milestone 1 in progress; vertical slice works | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust tests | 30 passing | `cargo test --workspace` |
+| Rust tests | 32 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
@@ -40,7 +40,8 @@ claim otherwise in README, issues or release notes.
 - Rust workspace with `weft-core`, `weft-db`, `weft-storage`,
   `weft-validation`, `weft-server` and `weft-cli`.
 - `weft init`, `weft keygen`, `weft migrate`, `weft doctor` and `weft serve`
-  commands. Relative config, key and storage paths are resolved against the
+  commands. `weft doctor` reads cgroup v1/v2 memory and CPU limits, so a
+  constrained container is checked against the 2 GiB / 2 vCPU profile. Relative config, key and storage paths are resolved against the
   configuration file directory.
 - PostgreSQL migrations (`0001`–`0003`) covering nodes, keys, blobs, content,
   tags, sources, evidence, uploads, reports, moderation events, federation
@@ -81,7 +82,7 @@ claim otherwise in README, issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust tests | 30 | `cargo test --workspace` |
+| Rust tests | 32 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Upload/review/search/media flow | 4 | `... --test upload_flow -- --ignored` |
 | Real worker | 1 | `cargo test -p weft-validation --test worker_smoke` |
@@ -124,6 +125,8 @@ is larger). Disk is 38 GB free, above the 20 GB floor.
 | `/api/v1/media/{hash}` | Ed25519 signature verified with the node key |
 | Remove content | Search/manifest/media return no item / `404`; row retained as `removed` |
 | `/metrics` | Upload, decode, storage, media and request counters present |
+| `weft doctor` under 1 GiB / 1 CPU | Refuses: reports both limits |
+| `weft doctor` under 2 GiB / 2 CPU | Passes |
 | `check_docs.py` and `cargo test --workspace` | Pass |
 
 Peak cgroup memory was 4.1 MB and CPU time 0.08 s for the upload, review,

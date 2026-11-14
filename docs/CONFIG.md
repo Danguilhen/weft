@@ -190,7 +190,8 @@ At startup:
 - `storage.path` is writable and has at least `max_file_size` free.
 - `max_file_size` ≤ `storage.max_size`.
 - `max_decoded_memory` is within the operator's budget and above the largest
-  allowed image.
+  allowed image. `weft doctor` uses cgroup v1/v2 memory and CPU limits when
+  present, so container quotas are checked rather than the host total.
 - `database.url` parses and connects; migrations are current.
 - `decode.worker_path` exists or resolves to the sibling `weft-decode`; an admin
   token is required for admin routes.
