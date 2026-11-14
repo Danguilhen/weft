@@ -1,7 +1,7 @@
 # Weft — status
 
-Status: Milestone 1 in progress; the standalone vertical slice works. Started
-2026-11-14. This is the only status page.
+Status: Milestone 1 complete locally; only the CI container/Compose start is
+unverified. Started 2026-11-14. This is the only status page.
 
 ## Summary
 
@@ -10,25 +10,26 @@ Status: Milestone 1 in progress; the standalone vertical slice works. Started
 | Design documentation | Complete for Phase 1 | This docs pack and `PLAN.md` |
 | Architecture and threat model | Complete through Milestone 1; review recorded | `ARCHITECTURE.md`, `THREAT_MODEL.md` |
 | Design review | Approved for Milestones 0 and 1; CI verification pending | `DESIGN_REVIEW.md` |
-| Implementation | Milestone 1 in progress; vertical slice works | `DESIGN_REVIEW.md` §7–9 |
+| Implementation | Milestone 1 complete locally; CI start pending | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
 | Rust tests | 32 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
-| Standalone node MVP | Complete locally; CI/acceptance verification pending | `upload_flow` test |
+| Standalone node MVP | Complete locally; CI container/Compose start pending | `upload_flow` test |
 | ActivityPub federation | Not started | — |
 | Media replication | Not started | — |
 | Contribution accounting | Not started | — |
-| Licence/moderation workflow | Partial: queue/actions/reports/disputes | `weft-server` routes |
+| Licence/moderation workflow | Implemented for the local node | `weft-server` routes |
 | Jabu GIF picker | Not started | — |
 | Jabu animated-attachment fix | Not started | Tracked in `PLAN.md` |
 
-The standalone vertical slice is working: upload → decode → quarantine/review →
-approval → search → signed manifest → media retrieval, with admin reports and
-moderation actions. Federation, replication, accounting, local block rules and
-the full operational metrics/OpenAPI surface are not implemented yet. Do not
-claim otherwise in README, issues or release notes.
+The standalone vertical slice is working end to end: upload → decode →
+quarantine/review → approval → search → signed manifest → media retrieval, with
+admin reports, moderation and licence actions, block rules, orphan cleanup,
+storage quotas, metrics and OpenAPI. The acceptance demo passes under 2 GiB /
+2 vCPU caps. Federation, replication and contribution accounting are not
+implemented. Do not claim otherwise in README, issues or release notes.
 
 ## What exists
 
