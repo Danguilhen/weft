@@ -281,7 +281,7 @@ legal advice. Never build a shared repository of such material.
 | Sybil/collusion in accounting | No global identity | Bounded scores; basic access not gated |
 | Deletion after download | Decentralisation | Document; tombstones and notifications only |
 | Compromised peer key | Signatures only prove key possession | Revocation, pinning, operator review |
-| 1 GB node overload | Postgres + decode | Recommend 2 GB or lower limits; measure |
+| Below-profile node | Operators run below 2 GB | `weft doctor`, unsupported warning, documented limits |
 | Legal obligations | Software cannot provide legal compliance | Operator guide and legal review |
 | Generic ActivityPub interop | Ed25519/RSA gap | Target Weft-aware nodes; document |
 

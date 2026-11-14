@@ -9,20 +9,20 @@ settled before the first public node), `later` (can wait).
 
 | # | Question | Options | Impact | Status |
 |---|---|---|---|---|
-| Q1 | Public name, domain, crate namespace | Weft; another name | Crate names, URNs, JSON-LD namespace, domain ownership | before-release |
+| Q1 | Public name, domain, crate namespace | Weft (selected); another name | Crate names, URNs, JSON-LD namespace, domain ownership | resolved by ADR-012 (name/crates/URN; domain in Q2) |
 | Q2 | JSON-LD namespace URI | `https://weft.network/ns#`; a registered w3id; another domain | Federation compatibility; must be stable before Phase 2 | blocking for federation |
-| Q3 | ActivityPub signature interoperability | Ed25519 only; Ed25519 plus RSA-2048 compatibility key | Mastodon-style interop vs simpler implementation | before-release |
-| Q4 | Default upload policy | `review` (quarantine); `open`; `closed` | Abuse exposure vs contribution friction | blocking for MVP |
+| Q3 | ActivityPub signature interoperability | Ed25519 only; Ed25519 plus RSA-2048 compatibility key | Mastodon-style interop vs simpler implementation | blocking for federation |
+| Q4 | Default upload policy | `review` (quarantine); `open`; `closed` | Abuse exposure vs contribution friction | resolved by ADR-010 |
 | Q5 | Search backend | PostgreSQL FTS; Meilisearch from day one | Operational weight, search quality | resolved by ADR-002; revisit after MVP |
-| Q6 | Jabu send mode | Re-upload via XEP-0363; send Weft URL; both | Privacy, link rot, storage, OMEMO behaviour | blocking for integration |
-| Q7 | Anonymous-upload anti-abuse | Per-IP token bucket; optional proof of work; both | CPU, spam resistance, small-node cost | blocking for MVP |
+| Q6 | Jabu send mode | Re-upload via XEP-0363; send Weft URL; both | Privacy, link rot, storage, OMEMO behaviour | resolved by ADR-007 (upload default; link opt-in) |
+| Q7 | Anonymous-upload anti-abuse | Per-IP token bucket; optional proof of work; both | CPU, spam resistance, small-node cost | resolved by ADR-011 |
 | Q8 | Operator identity for receipt de-duplication | Optional operator ID; no operator ID | Accounting manipulation resistance vs anonymity | later |
 | Q9 | Data retention defaults | None; 7 days; 30 days for abuse logs | Legal exposure, privacy | before-release |
 | Q10 | Documentation licence | CC BY-SA 4.0; CC BY 4.0; no doc licence | Reuse and translation | before-release |
-| Q11 | Minimum supported node size | 1 vCPU / 1 GB / 10 GB; 2 vCPU / 2 GB / 50 GB | Defaults, search and decode budgets | blocking for MVP |
+| Q11 | Minimum supported node size | 2 vCPU / 2 GB / 20 GB (selected); smaller is unsupported | Defaults, search and decode budgets | resolved by ADR-009 |
 | Q12 | Legal review jurisdiction | UK; EU; multi-jurisdiction | Takedown and illegal-content procedures | before-release |
 | Q13 | Public moderation-event transport | ActivityPub `Flag` plus custom events; custom only | Interop and clarity | before-release |
-| Q14 | Name of the media protocol | Weft Media Distribution (WMD); another name | Documentation only | later |
+| Q14 | Name of the media protocol | WMP; another name | Documentation only | resolved by ADR-012 (WMP; `weft-wmp/0.1`) |
 
 ## How to resolve
 

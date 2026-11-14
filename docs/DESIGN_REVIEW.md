@@ -31,8 +31,8 @@ operations. They are now fixed or explicitly gated:
    remote context fetching, closing a major SSRF/DoS path.
 3. **Federation delivery durability** now uses a transactional outbox and a
    persistent inbox dedupe table.
-4. **Small-node sizing** is called out as a decision, not an assumption: 1 GB
-   with PostgreSQL and a 256 MB decode budget is too tight for a public node.
+4. **Small-node sizing** is resolved: the supported public profile is 2 vCPU /
+   2 GB / 20 GB; below that is unsupported and `weft doctor` warns or refuses.
 
 Threat coverage is broad, including upload decoders, federation replay, SSRF,
 replication quotas, receipt gaming, licence fraud, privacy and supply chain. The
@@ -46,17 +46,17 @@ are documented rather than hidden.
 | DR-01 | High | Upload | The first draft named a "validation worker" but did not define the process boundary, IPC or limits. A thread in the web process would not be a security boundary. | **Addressed in architecture.** `weft-decode` is a separate process, fd/path handoff, rlimits, timeout, no network/DB; sandbox recommended. Must be verified in Milestone 1. |
 | DR-02 | High | Federation | ActivityPub JSON-LD can trigger remote context fetches, creating SSRF and DoS paths. | **Addressed.** Pin a local context; never fetch remote contexts; validate a fixed JSON shape; HTTPS-only outbound with private-IP rejection. |
 | DR-03 | High | Federation | Publishing an event and delivering it are not atomic; a crash can lose announcements. | **Addressed.** Transactional outbox plus persistent inbox dedupe; both tables are now in `DATA_MODEL.md`. Verify the transaction/publisher behaviour in Phase 2. |
-| DR-04 | High | Operations | The brief's "1 GB / 1 vCPU" target with PostgreSQL and a 256 MB decode budget is unrealistic for a public node. | **Open (Q11).** Recommend 2 GB for public nodes, or 1 GB with 128 MB decode, 8 MP, 150 frames and one decoder. Measure in the MVP. |
+| DR-04 | High | Operations | The brief's "1 GB / 1 vCPU" target with PostgreSQL and a 256 MB decode budget is unrealistic for a public node. | **Resolved by ADR-009.** Supported profile is 2 vCPU / 2 GB / 20 GB; below is unsupported. |
 | DR-05 | Medium | Federation | Ed25519-only ActivityPub signatures and the final JSON-LD namespace are unresolved. Generic fediverse interoperability may fail. | **Open (Q2, Q3).** Federation is blocked until decided. MVP is unaffected; target Weft-aware nodes initially. |
 | DR-06 | Medium | Protocol | Manifest caching and signature test vectors are not fully specified. A mutable manifest needs an ETag/version rule. | **Addressed.** Manifest ETag/`If-None-Match` semantics and the golden-vector requirement are now in `PROTOCOL.md`; the vectors are a Phase 2 acceptance test. |
-| DR-07 | Medium | Abuse | The default anonymous upload policy and anti-abuse mechanism are still open. | **Open (Q4, Q7).** MVP defaults to `review`; proof of work optional. Decide before a public node. |
+| DR-07 | Medium | Abuse | The default anonymous upload policy and anti-abuse mechanism are still open. | **Resolved by ADR-010 and ADR-011.** `review` default; token buckets/quotas; optional PoW. |
 | DR-08 | Medium | API | Full-text search must not become SQL injection and queries must not leak to logs or peers. | **Addressed.** Parameterized `websearch_to_tsquery`, no query logging, no federation of queries. Verify with tests. |
 | DR-09 | Medium | Moderation | Tombstone and removal propagation is described but has no concrete event flow for replicas. | **Addressed.** Removal returns `410`, the manifest records `removed`, and a signed `CONTENT_REMOVED` event can notify replicas; each replica applies local policy. Test this in Phase 5. |
 | DR-10 | Medium | Replication | Demand tracking, source selection and accounting are not testable at design level. | **Accepted phase gate.** Implement and test in Phases 3–4; do not expose accounting before the network test. |
 | DR-11 | Low | Admin/API | Admin auth, CSRF and CORS defaults were not explicit. | **Addressed.** Bearer tokens, no cookies, CORS disabled by default, loopback/allow-list, central error mapping. |
-| DR-12 | Low | Project | The public name, domain and JSON-LD namespace are not settled; "OpenGIF" is already used elsewhere. | **Open (Q1, Q2).** Weft is the working name; no code depends on the final domain yet. |
+| DR-12 | Low | Project | The public name, domain and JSON-LD namespace are not settled; "OpenGIF" is already used elsewhere. | **Partially resolved by ADR-012.** Weft/WMP names chosen; domain and namespace remain Q2. |
 | DR-13 | Low | Scope | The product is called a GIF network but the MVP also accepts static PNG/JPEG/WebP. | **Clarified.** Media is "GIF and animated media"; static images are allowed as attachments for the MVP and can be restricted by config. |
-| DR-14 | Low | Client | Jabu send mode and the animated-attachment fix are separate concerns. | **Accepted.** The animation fix is independent; the picker waits for the client milestone (Q6). |
+| DR-14 | Low | Client | Jabu send mode and the animated-attachment fix are separate concerns. | **Resolved by ADR-007.** XEP-0363 upload is the default; link mode is opt-in with no silent fallback. |
 
 ## 4. Architecture review
 
@@ -81,7 +81,7 @@ are documented rather than hidden.
   bounded; basic access must never depend on a score.
 - A single-node deployment still has a single point of failure. That is
   acceptable for small communities; replication is what spreads availability.
-- The 1 GB minimum is optimistic; see DR-04.
+- The supported profile is 2 GB after ADR-009; below that is unsupported, not a supported "minimal" mode.
 
 ### Feasibility
 
@@ -154,8 +154,7 @@ The model covers:
 ### Before Milestone 0 (repository scaffolding only)
 
 - Maintainer approves this review and the architecture/threat model.
-- Q11 (minimum node size) is answered or explicitly deferred with the
-  conservative limits in the architecture.
+- Q11 is resolved by ADR-009; no further action is required.
 
 Milestone 0 may create the workspace, CI, config loader, migrations skeleton,
 Docker Compose and health endpoints. It must not implement upload, federation or
@@ -163,7 +162,7 @@ replication.
 
 ### Before Milestone 1 (standalone MVP)
 
-- Q4 (default upload policy) and Q7 (anti-abuse) are answered.
+- Q4 (ADR-010) and Q7 (ADR-011) are accepted; the limits in ADR-009 are used.
 - DR-01 (decoder worker) and DR-02 (pinned context) are accepted as
   implementation requirements.
 - DR-03 outbox/inbox tables are recorded for the Phase 2 migration; the MVP does not need to send federation events.
@@ -171,7 +170,7 @@ replication.
 
 ### Before Phase 2 (federation)
 
-- Q1, Q2 and Q3 are answered in ADRs.
+- Q2 and Q3 are answered in ADRs; Q1/Q14 are resolved by ADR-012.
 - DR-06 manifest ETag/version and signature golden vectors are implemented.
 - DR-09 removal-event flow is exercised in the two-node test.
 - A two-node test plan exists.
@@ -189,8 +188,8 @@ implementation yet.**
 
 The architecture and threat model are internally consistent and materially
 safer than the first draft after the four high-severity changes. The remaining
-blockers are decisions, not missing design: the node size, the upload policy and
-the federation namespace/key profile.
+blockers are the maintainer sign-off and, for federation only, Q2/Q3 (namespace
+and key profile). The MVP decisions are recorded.
 
 Once the maintainer records approval here and resolves the Milestone 0/1
 conditions, implementation can start with the standalone MVP. Federation and

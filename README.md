@@ -93,7 +93,7 @@ tools/                Documentation checks, graphify wrapper
 - [`docs/DESIGN_REVIEW.md`](docs/DESIGN_REVIEW.md) — review findings and the implementation gate
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — components and data flow
 - [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — adversaries, threats and mitigations
-- [`docs/PROTOCOL.md`](docs/PROTOCOL.md) — media distribution protocol
+- [`docs/PROTOCOL.md`](docs/PROTOCOL.md) — Weft Media Protocol (WMP)
 - [`docs/FEDERATION.md`](docs/FEDERATION.md) — ActivityPub integration
 - [`docs/API.md`](docs/API.md) — REST API
 - [`docs/MVP.md`](docs/MVP.md) — first standalone milestone

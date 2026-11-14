@@ -36,7 +36,7 @@ Each node exposes a `Service` actor:
     "descriptor": "https://gifs.example/.well-known/weft",
     "software": "weft-server/0.1.0",
     "capabilities": ["metadata", "replication"],
-    "mediaProtocol": "weft-mdp/0.1"
+    "mediaProtocol": "weft-wmp/0.1"
   }
 }
 ```

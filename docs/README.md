@@ -11,7 +11,7 @@ specification for the first milestones, not a description of finished code.
 4. [`DESIGN_REVIEW.md`](DESIGN_REVIEW.md) — review findings and the implementation gate.
 5. [`ARCHITECTURE.md`](ARCHITECTURE.md) — components and data flow.
 6. [`MVP.md`](MVP.md) — the first standalone milestone.
-7. [`PROTOCOL.md`](PROTOCOL.md) — media distribution protocol.
+7. [`PROTOCOL.md`](PROTOCOL.md) — Weft Media Protocol (WMP).
 8. [`FEDERATION.md`](FEDERATION.md) — ActivityPub integration.
 9. [`API.md`](API.md) and [`openapi.yaml`](openapi.yaml) — REST surface.
 10. [`DATA_MODEL.md`](DATA_MODEL.md) — PostgreSQL model.

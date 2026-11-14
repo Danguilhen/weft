@@ -54,7 +54,7 @@ connect_timeout_seconds = 5
 [storage]
 backend = "local"                 # local | s3
 path = "/var/lib/weft"
-max_size = "10GB"                 # total blob + thumbnail budget
+max_size = "20GB"                 # total blob + thumbnail budget
 max_file_size = "15MB"            # per original upload
 thumbnail_size = 512              # px, longest edge
 # S3/MinIO when backend = "s3"
@@ -71,7 +71,8 @@ mode = "review"                   # open | review | closed
 allowed_mimes = ["image/gif", "image/png", "image/jpeg", "image/webp"]
 max_pixels = 16000000
 max_frames = 300
-max_decoded_memory = "128MB"
+max_decoded_memory = "256MB"
+max_concurrent_decodes = 2
 decode_timeout_seconds = 10
 max_title_chars = 200
 max_description_chars = 2000
@@ -80,6 +81,10 @@ max_tag_chars = 40
 # Per-client token bucket; the client is a salted hash, not an IP.
 rate_limit_per_hour = 20
 rate_limit_burst = 5
+max_pending_per_client = 10
+max_daily_bytes = "100MB"
+# IPv6 rate-limit prefix (64 = one bucket per /64; 0 = per address).
+rate_limit_ipv6_prefix = 64
 # Optional proof of work for anonymous uploads.
 proof_of_work = false
 
@@ -156,7 +161,7 @@ max_manifest_requests_per_minute = 300
 | `upload.mode` | `review` | Anonymous open uploads are too risky for a new public node |
 | `storage.max_file_size` | 15 MB | Covers most GIFs without enabling abuse |
 | `upload.max_frames` | 300 | Bounds decode work |
-| `upload.max_decoded_memory` | 128 MB | Keeps a 1 GB node alive; raise to 256 MB on a 2 GB node |
+| `upload.max_decoded_memory` | 256 MB | Fits the supported 2 GB profile with headroom |
 | `federation.enabled` | false | The MVP is standalone |
 | `replication.enabled` | false | Opt-in by design |
 | `search.backend` | `postgres` | No extra service for a small node |

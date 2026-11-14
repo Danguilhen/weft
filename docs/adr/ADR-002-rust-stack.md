@@ -9,7 +9,7 @@
 Weft needs a small, secure, self-hostable server with strict upload validation,
 predictable memory use and a typed client that Jabu can embed. The brief
 suggested Go or Rust and Meilisearch; both are viable, but a first version should
-minimise moving parts for a 1 vCPU / 1 GB node.
+minimise moving parts for a 2 vCPU / 2 GB node.
 
 ## Decision
 

@@ -12,9 +12,9 @@ The recommended public small node:
 - a reverse proxy with TLS;
 - outbound HTTPS for federation and replication (optional in the MVP).
 
-A 1 vCPU / 1 GB / 10 GB node is possible for a small, read-mostly library with the
-conservative decode limits in `CONFIG.md` (128 MB, 8 MP, 150 frames). Measure
-before recommending it for public uploads.
+Below 2 vCPU / 2 GB / 20 GB is unsupported. `weft doctor` warns or refuses when
+the configured limits exceed the detected cgroup/available memory or disk. Do not
+recommend a 1 GB node for public uploads.
 
 A node with federation and replication disabled needs no inbound peer access
 beyond the public HTTP API.

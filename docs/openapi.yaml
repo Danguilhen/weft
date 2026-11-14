@@ -4,7 +4,8 @@ info:
   version: 0.1.0-draft
   description: |
     Draft API for a Weft node. Immutable media bytes are served from /media/{hash};
-    metadata and discovery live under /api/v1. See docs/API.md for conventions.
+    metadata and discovery live under /api/v1. See docs/API.md for conventions. The
+    media layer is the Weft Media Protocol (WMP).
     This document is a design artifact and must be updated with the implementation.
   license:
     name: AGPL-3.0-or-later

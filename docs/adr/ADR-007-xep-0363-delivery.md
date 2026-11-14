@@ -18,6 +18,8 @@ copies the bytes and consumes the user's upload quota.
   it through XEP-0363, and send a file message with the uploaded URL and MIME.
 - Keep a `link` send mode as an explicit setting for users who prefer not to
   duplicate the bytes.
+- Never fall back from upload to link silently. If the fetch or upload fails,
+  show the error and let the user retry or switch mode explicitly.
 - Never re-encode the GIF.
 - Do not add tracking parameters to either URL.
 - Include attribution and licence metadata where the message format supports it;

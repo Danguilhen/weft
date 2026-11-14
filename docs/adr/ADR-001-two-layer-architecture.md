@@ -1,4 +1,4 @@
-# ADR-001 — ActivityPub metadata plus a media distribution protocol
+# ADR-001 — ActivityPub metadata plus the Weft Media Protocol (WMP)
 
 - Status: Accepted
 - Date: 2026-11-14

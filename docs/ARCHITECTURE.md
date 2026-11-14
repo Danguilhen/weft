@@ -351,16 +351,15 @@ Illustrative, to be measured in the MVP:
 
 | Profile | CPU | RAM | Storage | Limits |
 |---|---|---|---|---|
-| Minimum (read-mostly, small library) | 1 vCPU | 1 GB | 10 GB | 128 MB decode, 8 MP, 150 frames |
-| Recommended public node | 2 vCPU | 2 GB | 20 GB | 256 MB decode, 16 MP, 300 frames |
+| Supported public node | 2 vCPU | 2 GB | 20 GB | 256 MB decode, 16 MP, 300 frames, 2 decodes |
 | Replicating node | 2 vCPU | 2 GB | 50 GB+ | quotas per policy |
 
 - Metadata is small (a few KB per item) plus FTS; thumbnails ~30–80 KB.
 - Blobs dominate storage. Budget 20% free for temp/WAL.
-- One decode per vCPU; concurrency is capped, not queued without bound.
+- Decodes are capped at 2 on the supported profile; no unbounded queue.
 - 1 Mbps sustained egress is about 10 GB/day; form a realistic budget.
-- A 1 GB node with PostgreSQL and a 256 MB decode budget is tight; the review
-  recommends 2 GB for a public node or the minimum limits above.
+- Below 2 GB is unsupported. `weft doctor` warns or refuses when the configured
+  limits exceed the detected cgroup/available memory or disk.
 
 ## 18. Failure modes
 
@@ -426,13 +425,11 @@ Illustrative, to be measured in the MVP:
 
 Accepted: see [`adr/README.md`](adr/README.md).
 
-Blocking or review-relevant open questions:
-- Q1/Q2: public name, domain and JSON-LD namespace (federation).
-- Q3: Ed25519-only vs RSA compatibility.
-- Q4/Q7: default upload policy and anti-abuse.
-- Q5: search backend after the MVP.
-- Q6: Jabu upload vs link mode.
-- Q11: minimum node size / 1 GB feasibility.
+Resolved by ADR-007 and ADR-009 through ADR-012: node size, upload policy,
+anti-abuse, naming, the WMP protocol name and the XMPP send mode. Still open:
+- Q2: JSON-LD namespace/domain (federation).
+- Q3: Ed25519-only vs RSA compatibility (federation).
+- Q8–Q10 and Q12–Q13: later or before release.
 
 See [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) for the full list.
 

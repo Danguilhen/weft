@@ -37,12 +37,6 @@ review verdict changes.
 Remaining:
 
 - Obtain maintainer sign-off on the architecture, threat model and design review.
-- Resolve Q11 (minimum node size) or accept the conservative limits in
-  `ARCHITECTURE.md`; record the result.
-- Resolve Q11 (node size) in [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) and record
-  the result in an ADR. Q4 (upload policy) and Q7 (anti-abuse) are due before
-  Milestone 1. Q1, Q2, Q3 and Q6 are resolved at their phase gates; Q5 is already
-  covered by ADR-002.
 - Scaffold the Rust workspace with `weft-core`, `weft-db`, `weft-storage`,
   `weft-validation`, `weft-server` and `weft-cli`; add `weft-client` when the
   API shape is stable.
@@ -66,9 +60,9 @@ answers `/healthz`; the test harness runs against PostgreSQL; CI is green.
 
 ## 3. Milestone 1 — Standalone MVP
 
-**Gate:** `DESIGN_REVIEW.md` is approved for Milestone 1; Q4 and Q7 are
-resolved; DR-01 (decoder worker), DR-02 (pinned context) and DR-03
-(outbox/inbox schema) are accepted as implementation requirements.
+**Gate:** `DESIGN_REVIEW.md` is approved for Milestone 1; DR-01 (decoder worker),
+DR-02 (pinned context) and DR-03 (outbox/inbox schema) are accepted as
+implementation requirements.
 
 Scope and acceptance: [`MVP.md`](MVP.md).
 
@@ -130,12 +124,12 @@ Scope and acceptance: [`MVP.md`](MVP.md).
 - Document the backup and restore procedure in `docs/OPERATIONS.md`.
 - Update `STATUS.md` with the verified behaviours and test counts.
 
-Exit criteria: the ten-step acceptance demo in `MVP.md` passes on a 1 vCPU /
-1 GB node with PostgreSQL and a 10 GB storage budget.
+Exit criteria: the ten-step acceptance demo in `MVP.md` passes on the supported
+2 vCPU / 2 GB / 20 GB node with PostgreSQL.
 
 ## 4. Milestone 2 — ActivityPub federation
 
-**Gate:** Q1, Q2 and Q3 are resolved in ADRs; DR-06 golden vectors and DR-09
+**Gate:** Q2 and Q3 are resolved in ADRs; DR-06 golden vectors and DR-09
 removal flow are implemented and tested; a two-node interop plan exists.
 
 - Add the node actor, Ed25519 key publication, key rotation and revocation

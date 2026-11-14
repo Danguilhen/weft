@@ -1,6 +1,6 @@
-# Weft Media Distribution Protocol (WMDP)
+# Weft Media Protocol (WMP)
 
-Version: `weft-mdp/0.1` (draft).
+Version: `weft-wmp/0.1` (draft).
 
 This protocol distributes immutable media bytes, metadata manifests, replica
 advertisements and signed transfer receipts between Weft nodes. It is separate
@@ -46,7 +46,7 @@ short period (60 seconds) but discovery must not be cached indefinitely.
   ],
   "capabilities": {
     "api": ["v1"],
-    "media": ["weft-mdp/0.1"],
+    "media": ["weft-wmp/0.1"],
     "federation": "activitypub",
     "replication": true,
     "search": "postgres"
