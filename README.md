@@ -66,7 +66,7 @@ describes content; the media protocol delivers it.
         └──────────────────────────────────────────┘
 ```
 
-- ActivityPub actor per node, signed with Ed25519 node keys.
+- ActivityPub actor per node with an RSA-2048 compatibility key; WMP manifests keep Ed25519 signatures.
 - Content bytes identified by `urn:weft:sha256:<hash>`.
 - Media served from `/media/{hash}` with a signed manifest.
 - Replication is pull-based and voluntary.

@@ -22,7 +22,8 @@ specification for the first milestones, not a description of finished code.
 15. [`XMPP.md`](XMPP.md) — Jabu integration.
 16. [`GOVERNANCE.md`](GOVERNANCE.md) — project decision-making.
 17. [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) — unresolved choices.
-18. [`adr/README.md`](adr/README.md) — decision records.
+18. [`context/weft.jsonld`](context/weft.jsonld) — pinned JSON-LD context.
+19. [`adr/README.md`](adr/README.md) — decision records.
 
 ## Ownership
 
@@ -44,6 +45,7 @@ specification for the first milestones, not a description of finished code.
 | `XMPP.md` | Client integration |
 | `GOVERNANCE.md` | Project and maintainer process |
 | `OPEN_QUESTIONS.md` | Undecided choices |
+| `context/` | Pinned JSON-LD context and namespace notes |
 | `adr/` | Accepted decisions and their history |
 | `schemas/` | Machine-readable wire schemas; see [`schemas/README.md`](schemas/README.md) |
 
@@ -56,7 +58,9 @@ the owning document instead of adding a third description.
 - Protocol examples use JSON with comments only where marked illustrative.
 - Times are RFC 3339 in UTC.
 - Hashes are lowercase hexadecimal SHA-256 unless a document says otherwise.
-- Signatures are Ed25519 over RFC 8785 canonical JSON, base64url without padding.
+- WMP manifest signatures are Ed25519 over RFC 8785 canonical JSON, base64url
+  without padding. ActivityPub uses RSA-2048 HTTP Signatures (ADR-013).
 - API paths are relative to the node origin and start with `/api/v1`.
 - `urn:weft:sha256:<hash>` identifies immutable bytes.
-- The public name and domain are provisional; see `OPEN_QUESTIONS.md`.
+- The public name is Weft; the JSON-LD namespace is fixed at
+  `https://w3id.org/weft/ns#` (ADR-014). A brand domain remains optional.

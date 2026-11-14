@@ -283,7 +283,7 @@ legal advice. Never build a shared repository of such material.
 | Compromised peer key | Signatures only prove key possession | Revocation, pinning, operator review |
 | Below-profile node | Operators run below 2 GB | `weft doctor`, unsupported warning, documented limits |
 | Legal obligations | Software cannot provide legal compliance | Operator guide and legal review |
-| Generic ActivityPub interop | Ed25519/RSA gap | Target Weft-aware nodes; document |
+| Generic ActivityPub interop | Algorithm mismatch | RSA-2048 HTTP Signatures for ActivityPub; Ed25519 remains WMP-only |
 
 ## 10. Out of scope
 
@@ -309,7 +309,7 @@ legal advice. Never build a shared repository of such material.
 
 ## 12. Open security questions
 
-- Q3: Ed25519-only vs RSA compatibility for ActivityPub.
+- Q3: resolved by ADR-013 (RSA-2048 ActivityPub, Ed25519 WMP).
 - Q4/Q7: upload policy and anti-abuse defaults.
 - Q11: minimum node size and decode budget.
 - Q12: legal jurisdiction and takedown procedure.

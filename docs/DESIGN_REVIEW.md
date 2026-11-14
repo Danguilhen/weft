@@ -47,14 +47,14 @@ are documented rather than hidden.
 | DR-02 | High | Federation | ActivityPub JSON-LD can trigger remote context fetches, creating SSRF and DoS paths. | **Addressed.** Pin a local context; never fetch remote contexts; validate a fixed JSON shape; HTTPS-only outbound with private-IP rejection. |
 | DR-03 | High | Federation | Publishing an event and delivering it are not atomic; a crash can lose announcements. | **Addressed.** Transactional outbox plus persistent inbox dedupe; both tables are now in `DATA_MODEL.md`. Verify the transaction/publisher behaviour in Phase 2. |
 | DR-04 | High | Operations | The brief's "1 GB / 1 vCPU" target with PostgreSQL and a 256 MB decode budget is unrealistic for a public node. | **Resolved by ADR-009.** Supported profile is 2 vCPU / 2 GB / 20 GB; below is unsupported. |
-| DR-05 | Medium | Federation | Ed25519-only ActivityPub signatures and the final JSON-LD namespace are unresolved. Generic fediverse interoperability may fail. | **Open (Q2, Q3).** Federation is blocked until decided. MVP is unaffected; target Weft-aware nodes initially. |
+| DR-05 | Medium | Federation | Ed25519-only ActivityPub signatures and the final JSON-LD namespace are unresolved. Generic fediverse interoperability may fail. | **Resolved by ADR-013 and ADR-014.** ActivityPub uses RSA-2048 HTTP Signatures; WMP keeps Ed25519; the namespace is `https://w3id.org/weft/ns#`. |
 | DR-06 | Medium | Protocol | Manifest caching and signature test vectors are not fully specified. A mutable manifest needs an ETag/version rule. | **Addressed.** Manifest ETag/`If-None-Match` semantics and the golden-vector requirement are now in `PROTOCOL.md`; the vectors are a Phase 2 acceptance test. |
 | DR-07 | Medium | Abuse | The default anonymous upload policy and anti-abuse mechanism are still open. | **Resolved by ADR-010 and ADR-011.** `review` default; token buckets/quotas; optional PoW. |
 | DR-08 | Medium | API | Full-text search must not become SQL injection and queries must not leak to logs or peers. | **Addressed.** Parameterized `websearch_to_tsquery`, no query logging, no federation of queries. Verify with tests. |
 | DR-09 | Medium | Moderation | Tombstone and removal propagation is described but has no concrete event flow for replicas. | **Addressed.** Removal returns `410`, the manifest records `removed`, and a signed `CONTENT_REMOVED` event can notify replicas; each replica applies local policy. Test this in Phase 5. |
 | DR-10 | Medium | Replication | Demand tracking, source selection and accounting are not testable at design level. | **Accepted phase gate.** Implement and test in Phases 3–4; do not expose accounting before the network test. |
 | DR-11 | Low | Admin/API | Admin auth, CSRF and CORS defaults were not explicit. | **Addressed.** Bearer tokens, no cookies, CORS disabled by default, loopback/allow-list, central error mapping. |
-| DR-12 | Low | Project | The public name, domain and JSON-LD namespace are not settled; "OpenGIF" is already used elsewhere. | **Partially resolved by ADR-012.** Weft/WMP names chosen; domain and namespace remain Q2. |
+| DR-12 | Low | Project | The public name, domain and JSON-LD namespace are not settled; "OpenGIF" is already used elsewhere. | **Resolved for names and namespace.** ADR-012 chooses Weft/WMP; ADR-014 chooses the w3id namespace. A brand domain remains optional and does not block federation. |
 | DR-13 | Low | Scope | The product is called a GIF network but the MVP also accepts static PNG/JPEG/WebP. | **Clarified.** Media is "GIF and animated media"; static images are allowed as attachments for the MVP and can be restricted by config. |
 | DR-14 | Low | Client | Jabu send mode and the animated-attachment fix are separate concerns. | **Resolved by ADR-007.** XEP-0363 upload is the default; link mode is opt-in with no silent fallback. |
 
@@ -144,7 +144,7 @@ The model covers:
 | Upload validation and abuse | MVP, threat model | Covered |
 | Licence claims, evidence, disputes | Content licensing | Covered |
 | Moderation events and tombstones | Federation, content licensing | Covered; test in Phase 5 |
-| ActivityPub integration | Federation | Covered, blocked on Q2/Q3 |
+| ActivityPub integration | Federation | Covered; Q2/Q3 resolved, remaining Phase 2 gates |
 | REST API | API + OpenAPI | Draft covered |
 | XMPP/Gabu integration | XMPP doc, ADR-007 | Covered (Phase 6) |
 | Deliverables | Plan, docs index | Covered |
@@ -171,7 +171,7 @@ federation or replication. That scope has been completed and recorded in
 
 ### Before Phase 2 (federation)
 
-- Q2 and Q3 are answered in ADRs; Q1/Q14 are resolved by ADR-012.
+- Q2 and Q3 are answered by ADR-014 and ADR-013; Q1/Q14 are resolved by ADR-012.
 - DR-06 manifest ETag/version and signature golden vectors are implemented.
 - DR-09 removal-event flow is exercised in the two-node test.
 - A two-node test plan exists.
@@ -184,17 +184,20 @@ federation or replication. That scope has been completed and recorded in
 
 ## 8. Verdict
 
-**Approved for Milestone 1 (standalone MVP). Federation, replication and
+**Approved for Milestone 1 (standalone MVP). Federation is unblocked on Q2/Q3
+and remains gated on DR-06, DR-09 and the two-node plan; replication and
 accounting remain gated.**
 
 The architecture and threat model are internally consistent and materially
 safer than the first draft after the four high-severity changes. The remaining
-blockers are the maintainer sign-off and, for federation only, Q2/Q3 (namespace
-and key profile). The MVP decisions are recorded.
+blockers are the maintainer sign-off and, for federation only, the DR-06
+golden vectors, DR-09 removal flow and the two-node interop plan. Q2/Q3 are
+resolved.
 
 Milestone 1 is complete. The design review verification gate, the first CI run
-including the container and Compose jobs, passed on 2026-11-14. Federation,
-replication and accounting remain gated.
+including the container and Compose jobs, passed on 2026-11-14. Q2/Q3 are
+resolved; federation remains gated on the remaining Phase 2 items. Replication
+and accounting remain gated.
 
 ## 9. Sign-off
 

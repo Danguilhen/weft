@@ -111,6 +111,8 @@ implemented. Do not claim otherwise in README, issues or release notes.
 | ADR-010 | Default upload policy is review |
 | ADR-011 | Anonymous-upload anti-abuse: token buckets, quotas, optional PoW |
 | ADR-012 | Weft naming and the Weft Media Protocol (WMP) |
+| ADR-013 | ActivityPub uses RSA-2048; WMP keeps Ed25519 |
+| ADR-014 | JSON-LD namespace is `https://w3id.org/weft/ns#` |
 
 ## Acceptance run (2026-11-14)
 
@@ -146,4 +148,6 @@ all seven jobs, including the container build and the Compose health check
 
 Milestone 1 is complete. The local acceptance demo passes under the supported
 memory/CPU caps and the first CI run passed all jobs, including container and
-Compose. Federation, replication and accounting remain gated.
+Compose. Q2/Q3 are resolved; federation still needs the DR-06 golden vectors,
+the DR-09 removal flow and the two-node interop plan. Replication and accounting
+remain gated.

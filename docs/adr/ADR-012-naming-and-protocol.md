@@ -21,8 +21,9 @@ federation.
 - Content identity remains `urn:weft:sha256:<hash>`.
 - The media protocol is the **Weft Media Protocol (WMP)**.
 - Protocol version string: `weft-wmp/0.1`.
-- The domain and JSON-LD namespace remain Q2. They must be controlled by the
-  project and frozen before Phase 2; do not ship a placeholder in federation.
+- The JSON-LD namespace is resolved by ADR-014:
+  `https://w3id.org/weft/ns#`. A brand domain is still optional; do not use a
+  domain the project does not control.
 - Check crates.io and the relevant trademark/domain registries before the first
   public release; this ADR records intent, not a legal clearance.
 
@@ -31,9 +32,9 @@ federation.
 - Positive: a distinct name and a non-embarrassing protocol acronym.
 - Positive: wire identifiers are fixed before any implementation.
 - Negative: any existing drafts using the old `weft-mdp/0.1` string must be updated.
-- Negative: the final domain/namespace is still open and blocks federation.
-- Follow-up: secure the domain or w3id namespace, publish the JSON-LD context,
-  and reserve crate names.
+- Negative: the w3id redirect must be registered and hosted before federation.
+- Follow-up: register the w3id redirect, publish the JSON-LD context, and
+  reserve crate names.
 
 ## Alternatives considered
 

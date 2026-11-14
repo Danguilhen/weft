@@ -15,7 +15,7 @@ Each node exposes a `Service` actor:
 {
   "@context": [
     "https://www.w3.org/ns/activitystreams",
-    "https://weft.network/ns"
+    "https://w3id.org/weft/ns"
   ],
   "id": "https://gifs.example/actor",
   "type": "Service",
@@ -28,7 +28,7 @@ Each node exposes a `Service` actor:
   "followers": "https://gifs.example/followers",
   "following": "https://gifs.example/following",
   "publicKey": {
-    "id": "https://gifs.example/actor#key-1",
+    "id": "https://gifs.example/actor#ap-key-1",
     "owner": "https://gifs.example/actor",
     "publicKeyPem": "-----BEGIN PUBLIC KEY-----..."
   },
@@ -43,13 +43,16 @@ Each node exposes a `Service` actor:
 
 - The actor URL is the stable node identity.
 - The node descriptor carries the machine-readable limits and capabilities.
-- Keys are Ed25519. `publicKeyPem` is used for HTTP Signatures; the node
-  descriptor also exposes the raw base64url key for Weft-native verification.
+- The ActivityPub key is **RSA-2048**, published as `publicKeyPem` at
+  `<actor>#ap-key-1`, and used for HTTP Signatures (ADR-013).
+- WMP keeps its Ed25519 key at `<actor>#key-1`; the node descriptor exposes the
+  raw base64url key for manifest verification. It is not required for
+  ActivityPub interoperability.
 - Key rotation adds a new key and marks the old key `validUntil`. A revoked key
   stays listed with `revokedAt` so old signatures can be classified as
-  historical, not current.
-- The JSON-LD namespace is provisional. See
-  [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) Q2.
+  historical, not current. The two key types have independent histories.
+- The JSON-LD namespace is fixed at `https://w3id.org/weft/ns#` with the context
+  at `https://w3id.org/weft/ns` (ADR-014).
 
 ## 2. Discovery
 
@@ -83,7 +86,7 @@ manifest and bytes; it never contains the bytes.
 {
   "@context": [
     "https://www.w3.org/ns/activitystreams",
-    "https://weft.network/ns"
+    "https://w3id.org/weft/ns"
   ],
   "id": "https://gifs.example/o/3a7bd3e2360a...",
   "type": "Document",
@@ -157,7 +160,7 @@ the decision; other nodes apply their own policy.
 {
   "@context": [
     "https://www.w3.org/ns/activitystreams",
-    "https://weft.network/ns"
+    "https://w3id.org/weft/ns"
   ],
   "id": "https://gifs.example/events/01J...",
   "type": "weft:ModerationEvent",
@@ -237,18 +240,19 @@ Media download is always a separate, scheduled, policy-controlled action.
 
 ## 6. Signatures
 
-Weft uses Ed25519 keys for its own protocol. ActivityPub HTTP Signatures are used
-for inbound and outbound requests:
+Weft keeps Ed25519 for its own WMP manifests. ActivityPub requests use
+draft-cavage HTTP Signatures with the RSA-2048 actor key (ADR-013):
 
-- `Signature` header with `keyId`, `algorithm`, `headers`, `signature`;
+- `Signature` header with `keyId`, `algorithm: rsa-sha256`, `headers`,
+  `signature`;
 - `Digest` for requests with a body;
 - `Host`, `Date` and `(request-target)` in the signed header set;
 - five-minute clock skew;
-- nonce cache for Weft extensions.
+- nonce cache for replay protection.
 
-Compatibility with implementations that only accept RSA is unresolved. See
-[`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) Q3. The first federation milestone
-targets Weft-aware nodes only and must say so in `STATUS.md`.
+This is the baseline used by Mastodon-class servers. Weft-native nodes may also
+verify Ed25519 WMP manifests, but ActivityPub delivery must not require Ed25519.
+Do not claim RFC 9421 support until the fediverse ecosystem adopts it.
 
 ## 7. Outbox and followers
 
@@ -304,8 +308,8 @@ At minimum a node can:
 
 ## 11. Open points
 
-- Final JSON-LD namespace and context hosting.
-- Exact HTTP Signature algorithm profile and RSA compatibility.
+- Publish the `w3id.org/weft/ns` context and verify the redirect before enabling
+  federation.
 - Whether `Flag` alone is sufficient for licence disputes or a dedicated object
   is needed.
 - Relay or gossip discovery beyond peer exchange.

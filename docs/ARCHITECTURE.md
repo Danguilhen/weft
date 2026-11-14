@@ -211,8 +211,8 @@ MVP is declared complete.
 
 ### Actor and discovery
 
-- One `Service` actor per node, with Ed25519 keys and a signed descriptor at
-  `/.well-known/weft`.
+- One `Service` actor per node, with an RSA-2048 ActivityPub key and an Ed25519
+  WMP key, plus a signed descriptor at `/.well-known/weft`.
 - Discovery via bootstrap list, peer exchange, ActivityPub references and manual
   configuration. Discovery grants no trust.
 - A pinned local JSON-LD context; **remote contexts are never fetched**. Parse a
@@ -426,8 +426,8 @@ Accepted: see [`adr/README.md`](adr/README.md).
 
 Resolved by ADR-007 and ADR-009 through ADR-012: node size, upload policy,
 anti-abuse, naming, the WMP protocol name and the XMPP send mode. Still open:
-- Q2: JSON-LD namespace/domain (federation).
-- Q3: Ed25519-only vs RSA compatibility (federation).
+- Q2: resolved by ADR-014 (w3id JSON-LD namespace).
+- Q3: resolved by ADR-013 (RSA-2048 ActivityPub, Ed25519 WMP).
 - Q8–Q10 and Q12–Q13: later or before release.
 
 See [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) for the full list.

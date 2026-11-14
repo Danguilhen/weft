@@ -31,7 +31,8 @@ standalone release.
 ## 2. Milestone 0 — Foundation
 
 Complete. Evidence is in [`STATUS.md`](STATUS.md); the next open phase is
-Milestone 2, which is gated on Q2/Q3.
+Milestone 2. Q2/Q3 are resolved; the remaining gate is DR-06, DR-09 and the
+two-node interop plan.
 
 ## 3. Milestone 1 — Standalone MVP
 
@@ -52,11 +53,12 @@ Exit criteria: the ten-step acceptance demo in `MVP.md` passes on the supported
 
 ## 4. Milestone 2 — ActivityPub federation
 
-**Gate:** Q2 and Q3 are resolved in ADRs; DR-06 golden vectors and DR-09
-removal flow are implemented and tested; a two-node interop plan exists.
+**Gate:** Q2 and Q3 are resolved by ADR-014 and ADR-013; DR-06 golden vectors
+and DR-09 removal flow are implemented and tested; a two-node interop plan
+exists.
 
-- Add the node actor, Ed25519 key publication, key rotation and revocation
-  history.
+- Add the node actor, RSA-2048 ActivityPub key publication, Ed25519 WMP key
+  publication, key rotation and revocation history.
 - Pin a local JSON-LD context and reject or ignore remote context URLs.
 - Implement HTTP Signatures for inbound and outbound requests, with replay
   protection, clock skew, body digests and a nonce cache.
@@ -71,8 +73,8 @@ removal flow are implemented and tested; a two-node interop plan exists.
 - Add a two-node integration test: publish, discover, fetch metadata, update and
   delete.
 - Add a federation smoke test that runs two containers with distinct keys.
-- Document Ed25519/RSA interoperability in an ADR before claiming fediverse
-  compatibility.
+- Publish the `w3id.org/weft/ns` context and verify the redirect before
+  federation is enabled.
 
 Exit criteria: two independent nodes discover each other, exchange metadata,
 verify every signature, and apply independent moderation decisions; neither
