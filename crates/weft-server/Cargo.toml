@@ -1,0 +1,30 @@
+[package]
+name = "weft-server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Weft HTTP server"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/Danguilhen/Weft"
+
+[dependencies]
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+weft-core = { path = "../weft-core" }
+weft-db = { path = "../weft-db" }
+weft-storage = { path = "../weft-storage" }
+weft-validation = { path = "../weft-validation" }
+
+[dev-dependencies]
+tempfile.workspace = true
+tower.workspace = true
+
+[lints]
+workspace = true

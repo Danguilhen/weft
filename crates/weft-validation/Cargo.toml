@@ -1,0 +1,16 @@
+[package]
+name = "weft-validation"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Weft upload format sniffing and limit types"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/Danguilhen/Weft"
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+
+[lints]
+workspace = true

@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Local Compose profile. Override public URLs in production.
+
+[node]
+public_url = "http://127.0.0.1:8080"
+name = "Weft node"
+description = "Local development node"
+contact = ""
+key_file = "/var/lib/weft/node.key"
+actor_url = ""
+
+[server]
+bind = "0.0.0.0:8080"
+external_url = "http://127.0.0.1:8080"
+max_json_bytes = 1048576
+request_timeout_seconds = 30
+trusted_proxies = ["127.0.0.1/32", "::1/128"]
+
+[database]
+url = "postgres://weft:weft@db:5432/weft"
+max_connections = 10
+connect_timeout_seconds = 5
+
+[storage]
+backend = "local"
+path = "/var/lib/weft"
+max_size = "20GB"
+max_file_size = "15MB"
+thumbnail_size = 512
+
+[upload]
+mode = "review"
+allowed_mimes = ["image/gif", "image/png", "image/jpeg", "image/webp"]
+max_pixels = 16000000
+max_frames = 300
+max_decoded_memory = "256MB"
+max_concurrent_decodes = 2
+decode_timeout_seconds = 10
+max_title_chars = 200
+max_description_chars = 2000
+max_tags = 20
+max_tag_chars = 40
+rate_limit_per_hour = 20
+rate_limit_burst = 5
+max_pending_per_client = 10
+max_daily_bytes = "100MB"
+rate_limit_ipv6_prefix = 64
+proof_of_work = false
+
+[logging]
+level = "info"
+format = "json"
+
+[metrics]
+enabled = true
+bind = "127.0.0.1:9090"
+
+[privacy]
+hash_salt_file = "/var/lib/weft/hash.salt"
+client_hash_retention_days = 7
+report_retention_days = 90

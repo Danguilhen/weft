@@ -1,17 +1,20 @@
 # Weft — status
 
-Status: design phase, started 2026-11-14. This is the only status page.
+Status: Milestone 0 complete; standalone MVP next. Started 2026-11-14. This is
+the only status page.
 
 ## Summary
 
 | Area | State | Evidence |
 |---|---|---|
 | Design documentation | Complete for Phase 1 | This docs pack and `PLAN.md` |
-| Architecture and threat model | Drafted; under review | `ARCHITECTURE.md`, `THREAT_MODEL.md` |
-| Design review | Decisions recorded; sign-off pending | `DESIGN_REVIEW.md` |
-| Implementation | **Not authorised** | `DESIGN_REVIEW.md` §7–9 |
+| Architecture and threat model | Complete for Milestone 0; review recorded | `ARCHITECTURE.md`, `THREAT_MODEL.md` |
+| Design review | Approved for Milestone 0; Milestone 1 pending | `DESIGN_REVIEW.md` |
+| Implementation | Milestone 0 complete; Milestone 1 not authorised | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust workspace | Not started | — |
+| Rust unit tests | 18 passing | `cargo test --workspace` |
+| PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
+| Rust workspace | Milestone 0 scaffold complete | `Cargo.toml`, `target/debug/weft` |
 | Standalone node MVP | Not started | — |
 | ActivityPub federation | Not started | — |
 | Media replication | Not started | — |
@@ -20,8 +23,10 @@ Status: design phase, started 2026-11-14. This is the only status page.
 | Jabu GIF picker | Not started | — |
 | Jabu animated-attachment fix | Not started | Tracked in `PLAN.md` |
 
-There is **no server code, database schema, container image or deployed node**
-yet. Do not claim otherwise in README, issues or release notes.
+The Milestone 0 server scaffold, schema, container definition and local health
+endpoints exist. There is **no upload pipeline, search, media serving,
+federation, replication or deployed node** yet. Do not claim otherwise in README,
+issues or release notes.
 
 ## What exists
 
@@ -30,30 +35,37 @@ yet. Do not claim otherwise in README, issues or release notes.
   model, design review, privacy, operations, content-licensing, governance,
   XMPP and open questions documents.
 - ADR-001 through ADR-012.
+- Rust workspace with `weft-core`, `weft-db`, `weft-storage`,
+  `weft-validation`, `weft-server` and `weft-cli`.
+- `weft init`, `weft keygen`, `weft migrate` and `weft serve` commands.
+- First PostgreSQL migration (`0001_init.sql`) covering nodes, keys, blobs,
+  content, tags, sources, evidence, uploads, reports, moderation events,
+  federation outbox/inbox, block rules and audit log.
+- Content-addressed local storage with atomic writes and hash verification.
+- `GET /healthz`, `GET /readyz`, `GET /metrics` and `GET /api/v1/node`.
+- Dockerfile, Compose profile and CI workflow (the Compose profile has not
+  been run locally because Docker is unavailable in this environment; CI has a
+  compose job).
 - OpenAPI 3.1 draft for the MVP REST surface.
 - JSON schemas for the media manifest and node descriptor.
-- `tools/check_docs.py`, `tools/graphify.sh`, `Makefile`, docs CI workflow.
+- `tools/check_docs.py`, `tools/graphify.sh`, `Makefile`.
 - AGPL-3.0 root licence and MIT client licence.
 
 ## What does not exist
 
-- `Cargo.toml`, any crate, migrations or executable.
-- PostgreSQL schema or storage backend.
-- Upload/validation pipeline.
-- ActivityPub actor, inbox, signatures or discovery.
-- Replication, receipts or accounting.
-- Moderation or licence-dispute workflow.
-- Docker Compose stack or operator tooling.
+- Upload, quarantine, search, manifests or media serving.
+- A deployed or production-tested node.
 - Jabu animation fix or GIF picker.
 
 ## Test inventory
 
 | Check | Count | How to run |
 |---|---|---|
-| Documentation links | — | `python3 tools/check_docs.py` |
-| Rust unit/integration | 0 | — |
-| Protocol golden vectors | 0 | — |
-| Federation interop | 0 | — |
+| Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
+| Rust unit tests | 18 | `cargo test --workspace` |
+| PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
+| Protocol golden vectors | 0 | Milestone 2 |
+| Federation interop | 0 | Milestone 2 |
 
 ## Decisions in force
 
@@ -74,8 +86,7 @@ yet. Do not claim otherwise in README, issues or release notes.
 
 ## Next milestone
 
-The maintainer must review and sign off
-[`DESIGN_REVIEW.md`](DESIGN_REVIEW.md). Until then, no code is authorised.
-After sign-off, Milestone 0 in [`PLAN.md`](PLAN.md) starts with the workspace
-scaffold, CI and the Docker Compose skeleton; the standalone MVP follows in
-[`MVP.md`](MVP.md).
+Milestone 0 is complete. The next implementation step is the standalone MVP in
+[`MVP.md`](MVP.md), but Milestone 1 still requires the maintainer to approve the
+design review for that scope. See [`DESIGN_REVIEW.md`](DESIGN_REVIEW.md) and
+[`PLAN.md`](PLAN.md).

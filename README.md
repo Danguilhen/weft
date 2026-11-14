@@ -11,9 +11,10 @@ name and domain are not final yet; see
 
 ## Status
 
-**Design phase.** The repository currently contains the architecture, protocol,
-API, security and planning documents plus agent tooling. No server or client code
-has been written yet.
+**Milestone 0 complete.** The repository contains the design pack, a Rust
+workspace, configuration and CLI scaffolding, the first PostgreSQL migration,
+content-addressed storage, health endpoints, Docker Compose and CI. The
+standalone MVP is not implemented yet.
 
 - What exists and what does not: [`docs/STATUS.md`](docs/STATUS.md)
 - Open work and phase order: [`docs/PLAN.md`](docs/PLAN.md)

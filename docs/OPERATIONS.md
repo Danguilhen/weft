@@ -26,12 +26,20 @@ git clone <repository> weft
 cd weft
 cp deploy/.env.example deploy/.env
 # edit deploy/.env
-docker compose -f deploy/docker-compose.yml up -d
-docker compose -f deploy/docker-compose.yml exec weft weft init
-docker compose -f deploy/docker-compose.yml exec weft weft migrate
+docker compose -f deploy/docker-compose.yml up -d --build
+curl http://127.0.0.1:8080/healthz
 ```
 
-The node listens on `127.0.0.1:8080`; the reverse proxy publishes HTTPS.
+The container starts with `deploy/config.toml`, applies migrations on startup,
+and listens on `0.0.0.0:8080`. For a local binary:
+
+```bash
+weft init --config config.toml --public-url http://127.0.0.1:8080
+weft migrate --config config.toml
+weft serve --config config.toml
+```
+
+The reverse proxy publishes HTTPS in production.
 
 ## 3. Reverse proxy
 

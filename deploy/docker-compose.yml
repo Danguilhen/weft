@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: weft
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: weft
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weft}
+      POSTGRES_DB: weft
+    volumes:
+      - weft-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weft -d weft"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  weft:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    environment:
+      WEFT__DATABASE__URL: postgres://weft:${POSTGRES_PASSWORD:-weft}@db:5432/weft
+      WEFT__SERVER__BIND: 0.0.0.0:8080
+      WEFT__STORAGE__PATH: /var/lib/weft
+      WEFT__NODE__PUBLIC_URL: ${WEFT_PUBLIC_URL:-http://127.0.0.1:8080}
+      WEFT__SERVER__EXTERNAL_URL: ${WEFT_PUBLIC_URL:-http://127.0.0.1:8080}
+    ports:
+      - "8080:8080"
+    volumes:
+      - weft-data:/var/lib/weft
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  weft-db:
+  weft-data:

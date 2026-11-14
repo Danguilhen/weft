@@ -1,9 +1,10 @@
 # Weft — architecture
 
-Status: **design for review**. This document specifies the target architecture for
-the standalone MVP and the federation milestones. It is not a description of
-existing code. Implementation is not authorised until
-[`DESIGN_REVIEW.md`](DESIGN_REVIEW.md) records an approval.
+Status: **design; Milestone 0 scaffold implemented**. This document specifies
+the target architecture for the standalone MVP and the federation milestones.
+The scaffold, config, storage, migration and health server exist; upload,
+federation and replication do not. Milestone 1 requires the approval recorded in
+[`DESIGN_REVIEW.md`](DESIGN_REVIEW.md).
 
 Related decisions: [`adr/README.md`](adr/README.md). Open choices:
 [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md). Security analysis:

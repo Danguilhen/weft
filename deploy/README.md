@@ -1,22 +1,28 @@
 # Deployment assets
 
-Planned location for the reference deployment. **No deployment assets exist yet.**
-
-Expected files:
+Milestone 0 deployment profile. It builds the `weft-cli` binary and runs it
+against PostgreSQL.
 
 ```text
 deploy/
   Dockerfile
   docker-compose.yml
+  config.toml
   .env.example
-  caddy/Caddyfile
-  nginx/weft.conf
   README.md
 ```
 
-Until the MVP exists, use [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md) as the
-target procedure. Do not claim that a Compose stack works before it has been
-tested from a clean checkout.
+Start it with:
+
+```bash
+cp deploy/.env.example deploy/.env
+docker compose -f deploy/docker-compose.yml up -d --build
+curl http://127.0.0.1:8080/healthz
+```
+
+The Compose profile is a development/reference deployment. It has not been
+tested against a production reverse proxy or public traffic. Use
+[`../docs/OPERATIONS.md`](../docs/OPERATIONS.md) for the operational procedure.
 
 Rules:
 

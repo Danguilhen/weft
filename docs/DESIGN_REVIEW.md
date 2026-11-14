@@ -5,8 +5,7 @@ Documents: [`ARCHITECTURE.md`](ARCHITECTURE.md),
 [`THREAT_MODEL.md`](THREAT_MODEL.md)
 Scope: design for the standalone MVP, federation, replication and accounting.
 Reviewer: architecture author, for maintainer approval.
-Verdict: **conditionally approved for planning; implementation is not yet
-authorised.**
+Verdict: **approved for Milestone 0 only. Milestone 1 is not authorised.**
 
 ## 1. Purpose
 
@@ -156,9 +155,10 @@ The model covers:
 - Maintainer approves this review and the architecture/threat model.
 - Q11 is resolved by ADR-009; no further action is required.
 
-Milestone 0 may create the workspace, CI, config loader, migrations skeleton,
-Docker Compose and health endpoints. It must not implement upload, federation or
-replication.
+Milestone 0 approval covers the workspace, CI, config loader, migrations
+skeleton, Docker Compose and health endpoints. It does not cover upload,
+federation or replication. That scope has been completed and recorded in
+`STATUS.md`; it must not be extended without a new approval.
 
 ### Before Milestone 1 (standalone MVP)
 
@@ -183,25 +183,24 @@ replication.
 
 ## 8. Verdict
 
-**Conditionally approved for design planning. Not authorised for
-implementation yet.**
+**Approved for Milestone 0. Milestone 1 is not authorised.**
 
 The architecture and threat model are internally consistent and materially
 safer than the first draft after the four high-severity changes. The remaining
 blockers are the maintainer sign-off and, for federation only, Q2/Q3 (namespace
 and key profile). The MVP decisions are recorded.
 
-Once the maintainer records approval here and resolves the Milestone 0/1
-conditions, implementation can start with the standalone MVP. Federation and
-accounting must remain gated.
+Milestone 0 is complete. The standalone MVP may start only after the maintainer
+approves this review for Milestone 1 and confirms the Milestone 1 conditions.
+Federation and accounting remain gated.
 
 ## 9. Sign-off
 
 | Role | Name | Decision | Date |
 |---|---|---|---|
-| Maintainer | — | Pending | — |
+| Maintainer | — | Approved Milestone 0 (scaffold only) | 2026-11-14 |
 | Architecture author | — | Submitted for review | 2026-11-14 |
 | Security reviewer | — | Pending | — |
 
-When approved, change the verdict to **Approved for Milestone 0** or **Approved
-for Milestone 1** and record the scope. Do not mark it approved retroactively.
+Milestone 0 approval is recorded. Milestone 1 approval requires a new sign-off
+line and an explicit scope; do not extend an approval retroactively.

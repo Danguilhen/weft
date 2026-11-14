@@ -26,14 +26,14 @@ but its REST API and federation protocol are independent of any one client.
 The former working name was **OpenGIF**. Use **Weft** everywhere in the
 repository. `OpenGIF` may appear only in historical context.
 
-The project is in the **design phase**. The deliverable for the current phase is
-the documentation pack; implementation starts with the standalone MVP in
-`docs/MVP.md`.
+The project has completed **Milestone 0** (workspace, config, storage,
+migrations, health server, Docker and CI). The next implementation phase is the
+standalone MVP in `docs/MVP.md`.
 
-**Implementation gate:** no code is authorised until `docs/DESIGN_REVIEW.md`
-records an approved verdict. Read the review findings and conditions before
-scaffolding anything. The current verdict is conditional approval with sign-off
-pending.
+**Implementation gate:** Milestone 1 is not authorised yet. Read
+`docs/DESIGN_REVIEW.md` and do not implement upload, federation or replication
+until the maintainer approves that scope. Milestone 0 is complete; do not extend
+it silently.
 
 ## Non-negotiables
 
@@ -91,24 +91,32 @@ tools/                Documentation checks, graphify wrapper.
 
 ## Development commands
 
-There is no Rust workspace yet. The current checks are:
+The Milestone 0 workspace exists. The checks are:
 
 ```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
 python3 tools/check_docs.py      # relative links and required docs
 ./tools/graphify.sh              # optional knowledge graph refresh
 ```
 
-See [`tools/README.md`](tools/README.md).
-
-Once the Phase 1 workspace exists, the expected commands are:
+The Nix development command used in this environment is:
 
 ```bash
-nix develop                       # or the documented Rust toolchain
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets
-cargo test --workspace
-docker compose -f deploy/docker-compose.yml up -d
+nix shell nixpkgs#cargo nixpkgs#rustc nixpkgs#rustfmt nixpkgs#clippy nixpkgs#stdenv.cc \
+  -c cargo test --workspace
 ```
+
+The PostgreSQL smoke test is ignored unless `WEFT_TEST_DATABASE_URL` points to a
+disposable database:
+
+```bash
+WEFT_TEST_DATABASE_URL=postgres://weft@127.0.0.1:5432/weft \
+  cargo test -p weft-server --test postgres_smoke -- --ignored
+```
+
+The Compose profile is in `deploy/`. See [`tools/README.md`](tools/README.md).
 
 Do not add a toolchain, formatter or linter that is not documented here.
 
@@ -150,13 +158,8 @@ Do not add a toolchain, formatter or linter that is not documented here.
 
 ## Testing and verification
 
-The design phase is verified by the docs check:
-
-```bash
-python3 tools/check_docs.py
-```
-
-When code exists, the minimum gate for a change is:
+The Milestone 0 baseline is verified by the docs check, the workspace tests and
+the PostgreSQL smoke test. The minimum gate for any change is:
 
 ```bash
 cargo fmt --all -- --check

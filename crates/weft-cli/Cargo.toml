@@ -1,0 +1,27 @@
+[package]
+name = "weft-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Weft node command line"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/Danguilhen/Weft"
+
+[[bin]]
+name = "weft"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+base64.workspace = true
+clap.workspace = true
+ed25519-dalek.workspace = true
+getrandom.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+weft-core = { path = "../weft-core" }
+weft-db = { path = "../weft-db" }
+weft-server = { path = "../weft-server" }
+
+[lints]
+workspace = true

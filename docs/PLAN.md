@@ -30,33 +30,8 @@ standalone release.
 
 ## 2. Milestone 0 — Foundation
 
-**Gate:** implementation is not authorised until the maintainer approves
-[`DESIGN_REVIEW.md`](DESIGN_REVIEW.md). Do not scaffold the workspace before the
-review verdict changes.
-
-Remaining:
-
-- Obtain maintainer sign-off on the architecture, threat model and design review.
-- Scaffold the Rust workspace with `weft-core`, `weft-db`, `weft-storage`,
-  `weft-validation`, `weft-server` and `weft-cli`; add `weft-client` when the
-  API shape is stable.
-- Add workspace lints, `rustfmt`, SPDX headers and the pinned toolchain.
-- Add CI for `fmt`, `clippy`, unit tests, the docs check and the container build.
-- Implement the configuration loader and the `weft init`, `weft migrate` and
-  `weft serve` command skeleton.
-- Add the first migrations: nodes, blobs, content, tags, licences, moderation
-  events and uploads.
-- Add the storage trait with a local-filesystem implementation and a
-  content-addressed path layout.
-- Add structured logging, request IDs, health endpoints and a Prometheus
-  registry skeleton.
-- Add the Dockerfile and `deploy/docker-compose.yml` with PostgreSQL.
-- Add the integration-test harness: a disposable PostgreSQL, migrations applied,
-  and one HTTP round trip.
-- Update `docs/CONFIG.md` with the keys actually implemented.
-
-Exit criteria: a clean checkout builds; `docker compose up` starts a node that
-answers `/healthz`; the test harness runs against PostgreSQL; CI is green.
+Complete. Evidence is in [`STATUS.md`](STATUS.md); the next open phase is
+Milestone 1.
 
 ## 3. Milestone 1 — Standalone MVP
 

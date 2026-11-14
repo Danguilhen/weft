@@ -1,8 +1,8 @@
 # Weft — threat model
 
-Status: **design for review**. Initial model for the design phase. Revisit at
-every milestone and after any protocol change. Implementation is not authorised
-until [`DESIGN_REVIEW.md`](DESIGN_REVIEW.md) records approval.
+Status: **design; Milestone 0 scaffold implemented**. Initial model for the
+design phase. Revisit at every milestone and after any protocol change.
+Milestone 1 requires the approval recorded in [`DESIGN_REVIEW.md`](DESIGN_REVIEW.md).
 
 This model covers the node, the media protocol and the federation surface. It
 does not cover the security of independently operated nodes or client devices.
