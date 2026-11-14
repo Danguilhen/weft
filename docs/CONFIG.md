@@ -42,6 +42,8 @@ actor_url = "https://gifs.example/actor"
 bind = "127.0.0.1:8080"
 # Public origin behind the reverse proxy; used for absolute URLs.
 external_url = "https://gifs.example"
+# Bearer token for /api/v1/admin/*. Empty disables the admin API.
+admin_token = ""
 # Request body limit for JSON (uploads use their own limit).
 max_json_bytes = 1048576
 request_timeout_seconds = 30
@@ -139,6 +141,11 @@ backend = "postgres"              # postgres | meilisearch (future)
 enabled = true
 bind = "127.0.0.1:9090"           # or expose /metrics on the main server
 
+[decode]
+# Empty means the weft-decode binary next to weft.
+worker_path = ""
+timeout_seconds = 10
+
 [logging]
 level = "info"                    # error | warn | info | debug | trace
 format = "json"                   # json | pretty
@@ -166,6 +173,7 @@ max_manifest_requests_per_minute = 300
 | `storage.max_file_size` | 15 MB | Covers most GIFs without enabling abuse |
 | `upload.max_frames` | 300 | Bounds decode work |
 | `upload.max_decoded_memory` | 256 MB | Fits the supported 2 GB profile with headroom |
+| `decode.worker_path` | sibling `weft-decode` | Keeps decoding out of the web process |
 | `federation.enabled` | false | The MVP is standalone |
 | `replication.enabled` | false | Opt-in by design |
 | `search.backend` | `postgres` | No extra service for a small node |
@@ -184,6 +192,8 @@ At startup:
 - `max_decoded_memory` is within the operator's budget and above the largest
   allowed image.
 - `database.url` parses and connects; migrations are current.
+- `decode.worker_path` exists or resolves to the sibling `weft-decode`; an admin
+  token is required for admin routes.
 - `federation.enabled` requires a key and an actor URL.
 - `replication.enabled` requires `storage.max_size` > `max_replica_bytes` or an
   explicit acknowledgement.

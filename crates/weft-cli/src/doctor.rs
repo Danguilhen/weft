@@ -7,7 +7,7 @@ use std::path::Path;
 use std::process::Command;
 
 use anyhow::{bail, Context, Result};
-use weft_core::AppConfig;
+use weft_core::{parse_size, AppConfig};
 
 const TWO_GIB: u64 = 2 * 1024 * 1024 * 1024;
 const ONE_GIB: u64 = 1024 * 1024 * 1024;
@@ -147,38 +147,4 @@ fn available_disk_bytes(path: &str) -> Result<u64> {
         .parse()
         .context("parsing df available space")?;
     Ok(available_kb.saturating_mul(1024))
-}
-
-fn parse_size(value: &str) -> Option<u64> {
-    let value = value.trim();
-    let split = value
-        .find(|character: char| !character.is_ascii_digit() && character != '.')
-        .unwrap_or(value.len());
-    let number: f64 = value[..split].parse().ok()?;
-    let unit = value[split..].trim().to_ascii_uppercase();
-    let multiplier = match unit.as_str() {
-        "" | "B" => 1.0,
-        "KB" | "K" => 1_000.0,
-        "KIB" => 1024.0,
-        "MB" | "M" => 1_000_000.0,
-        "MIB" => 1024.0 * 1024.0,
-        "GB" | "G" => 1_000_000_000.0,
-        "GIB" => 1024.0 * 1024.0 * 1024.0,
-        _ => return None,
-    };
-    Some((number * multiplier) as u64)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::parse_size;
-
-    #[test]
-    fn parses_size_units() {
-        assert_eq!(parse_size("256MB"), Some(256_000_000));
-        assert_eq!(parse_size("256MiB"), Some(268_435_456));
-        assert_eq!(parse_size("20GB"), Some(20_000_000_000));
-        assert_eq!(parse_size("1024"), Some(1024));
-        assert_eq!(parse_size("nope"), None);
-    }
 }

@@ -26,6 +26,8 @@ services:
       WEFT__STORAGE__PATH: /var/lib/weft
       WEFT__NODE__PUBLIC_URL: ${WEFT_PUBLIC_URL:-http://127.0.0.1:8080}
       WEFT__SERVER__EXTERNAL_URL: ${WEFT_PUBLIC_URL:-http://127.0.0.1:8080}
+      WEFT__SERVER__ADMIN_TOKEN: ${WEFT_ADMIN_TOKEN:-}
+      WEFT__DECODE__WORKER_PATH: /usr/local/bin/weft-decode
     ports:
       - "8080:8080"
     volumes:

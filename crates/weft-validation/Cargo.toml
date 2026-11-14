@@ -8,9 +8,18 @@ license = "AGPL-3.0-or-later"
 repository = "https://github.com/Danguilhen/Weft"
 
 [dependencies]
+gif.workspace = true
+image.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+tempfile.workspace = true
+
+[[bin]]
+name = "weft-decode"
+path = "src/bin/weft_decode.rs"
 
 [lints]
 workspace = true

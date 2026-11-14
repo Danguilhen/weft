@@ -5,7 +5,8 @@ Documents: [`ARCHITECTURE.md`](ARCHITECTURE.md),
 [`THREAT_MODEL.md`](THREAT_MODEL.md)
 Scope: design for the standalone MVP, federation, replication and accounting.
 Reviewer: architecture author, for maintainer approval.
-Verdict: **approved for Milestone 0 only. Milestone 1 is not authorised.**
+Verdict: **approved for Milestone 1 (standalone MVP), subject to CI verification.
+Federation, replication and accounting remain gated.**
 
 ## 1. Purpose
 
@@ -183,24 +184,26 @@ federation or replication. That scope has been completed and recorded in
 
 ## 8. Verdict
 
-**Approved for Milestone 0. Milestone 1 is not authorised.**
+**Approved for Milestone 1 (standalone MVP). Federation, replication and
+accounting remain gated.**
 
 The architecture and threat model are internally consistent and materially
 safer than the first draft after the four high-severity changes. The remaining
 blockers are the maintainer sign-off and, for federation only, Q2/Q3 (namespace
 and key profile). The MVP decisions are recorded.
 
-Milestone 0 is complete. The standalone MVP may start only after the maintainer
-approves this review for Milestone 1 and confirms the Milestone 1 conditions.
-Federation and accounting remain gated.
+Milestone 1 is approved and in progress. The design review verification gate is
+the first CI run, including the container and Compose jobs. Federation,
+replication and accounting remain gated.
 
 ## 9. Sign-off
 
 | Role | Name | Decision | Date |
 |---|---|---|---|
 | Maintainer | — | Approved Milestone 0 (scaffold only) | 2026-11-14 |
+| Maintainer | — | Approved Milestone 1 (standalone MVP) | 2026-11-14 |
 | Architecture author | — | Submitted for review | 2026-11-14 |
 | Security reviewer | — | Pending | — |
 
-Milestone 0 approval is recorded. Milestone 1 approval requires a new sign-off
-line and an explicit scope; do not extend an approval retroactively.
+Milestone 0 and Milestone 1 approvals are recorded. Do not extend approval to
+federation, replication or accounting without a new sign-off.

@@ -42,63 +42,25 @@ implementation requirements.
 
 Scope and acceptance: [`MVP.md`](MVP.md).
 
-### Upload pipeline
+### Remaining
 
-- Implement the multipart upload endpoint and the `open`/`review`/`closed`
-  policies.
-- Add per-IP token buckets using a salted, rotating hash; document the retention
-  window.
-- Add the `weft-decode` worker: separate process, fd/path handoff, rlimits,
-  timeout, no network and no database access.
-- Add decode limits: file size, pixels, frames, decoded memory and time.
-- Add format sniffing and a decoder allow-list; reject SVG, HTML and unknown
-  containers.
-- Compute SHA-256 over the original bytes and deduplicate blobs.
-- Generate a safe thumbnail and strip metadata from derivatives.
-- Store uploads in quarantine and expose them only to the operator until
-  approved.
-- Add a failed-validation cleanup test: no blob, no searchable row.
-
-### Browse and search
-
-- Implement cursor pagination, newest and trending sorts.
-- Implement PostgreSQL full-text search over title, description and tags, plus
-  tag filters.
-- Add `GET /api/v1/tags`.
-- Add `GET /media/{hash}` with Range support, `ETag`, `Digest` and safe caching
-  headers.
-- Add the API manifest and sources endpoints; sign the manifest with the node key.
-- Add a search-index trait so Meilisearch can be added without touching
-  handlers.
-
-### Metadata and licensing
-
-- Add title, description, tags, source URL and attribution fields.
-- Add SPDX/Creative Commons licence claims and evidence URLs.
-- Enforce the licence status state machine and expose it in the API.
-- Add the report and licence-dispute endpoints, creating local moderation
-  events.
-- Never render or return a verified badge for unverified claims.
-
-### Moderation and admin
-
-- Add the quarantine queue with approve/reject.
-- Add remove, restrict, reinstate and tombstone behaviour.
-- Add local URL/domain and tag block rules.
-- Add the admin bearer-token middleware and audit log.
-- Ensure removed content disappears from search, media and sources while the
-  tombstone remains.
-
-### Operations
-
-- Add the OpenAPI document at `/api/openapi.json` and keep `docs/openapi.yaml`
-  in sync.
-- Add upload, decode, storage, request and error metrics.
-- Add the orphan-blob detector and quota report; automatic eviction is Phase 3.
-- Add the smoke script: start the stack, upload a GIF, verify the hash, approve,
-  search and retrieve.
-- Document the backup and restore procedure in `docs/OPERATIONS.md`.
-- Update `STATUS.md` with the verified behaviours and test counts.
+- Add local URL/domain and tag block rules, and apply them during upload and
+  indexing.
+- Add upload/decode/storage metrics and the orphan-blob/quota report.
+- Serve the OpenAPI document at `/api/openapi.json` and update
+  `docs/openapi.yaml` for the implemented routes.
+- Add licence-evidence verification actions and tests for the licence state
+  machine beyond the initial claim.
+- Add view-based trending and a search-index trait before replacing PostgreSQL.
+- Store and expose the upload source/attribution field.
+- Add a failed-validation cleanup test and a duplicate/idempotent upload test.
+- Add a real-worker integration test (the current upload test uses a fake
+  worker) and tests for reject, restrict, report and dispute.
+- Apply rlimits/sandboxing to `weft-decode` on Linux (the worker is currently a
+  separate process with limits enforced by the server and by the decoder).
+- Verify the first CI run, the container build and the Compose health check.
+- Run the acceptance demo on the supported 2 vCPU / 2 GB / 20 GB profile and
+  record the numbers.
 
 Exit criteria: the ten-step acceptance demo in `MVP.md` passes on the supported
 2 vCPU / 2 GB / 20 GB node with PostgreSQL.

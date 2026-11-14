@@ -1,33 +1,34 @@
 # Weft — status
 
-Status: Milestone 0 complete; standalone MVP next. Started 2026-11-14. This is
-the only status page.
+Status: Milestone 1 in progress; the standalone vertical slice works. Started
+2026-11-14. This is the only status page.
 
 ## Summary
 
 | Area | State | Evidence |
 |---|---|---|
 | Design documentation | Complete for Phase 1 | This docs pack and `PLAN.md` |
-| Architecture and threat model | Complete for Milestone 0; review recorded | `ARCHITECTURE.md`, `THREAT_MODEL.md` |
-| Design review | Approved for Milestone 0; Milestone 1 pending | `DESIGN_REVIEW.md` |
-| Implementation | Milestone 0 complete; Milestone 1 not authorised | `DESIGN_REVIEW.md` §7–9 |
+| Architecture and threat model | Complete through Milestone 1; review recorded | `ARCHITECTURE.md`, `THREAT_MODEL.md` |
+| Design review | Approved for Milestones 0 and 1; CI verification pending | `DESIGN_REVIEW.md` |
+| Implementation | Milestone 1 in progress; vertical slice works | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust unit tests | 18 passing | `cargo test --workspace` |
+| Rust unit tests | 26 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
-| Standalone node MVP | Not started | — |
+| Standalone node MVP | Partial: upload → review → search → media works | `upload_flow` test |
 | ActivityPub federation | Not started | — |
 | Media replication | Not started | — |
 | Contribution accounting | Not started | — |
-| Licence/moderation workflow | Not started | — |
+| Licence/moderation workflow | Partial: queue/actions/reports/disputes | `weft-server` routes |
 | Jabu GIF picker | Not started | — |
 | Jabu animated-attachment fix | Not started | Tracked in `PLAN.md` |
 
-The Milestone 0 server scaffold, schema, container definition and local health
-endpoints exist. There is **no upload pipeline, search, media serving,
-federation, replication or deployed node** yet. Do not claim otherwise in README,
-issues or release notes.
+The standalone vertical slice is working: upload → decode → quarantine/review →
+approval → search → signed manifest → media retrieval, with admin reports and
+moderation actions. Federation, replication, accounting, local block rules and
+the full operational metrics/OpenAPI surface are not implemented yet. Do not
+claim otherwise in README, issues or release notes.
 
 ## What exists
 
@@ -44,7 +45,15 @@ issues or release notes.
 - First PostgreSQL migration (`0001_init.sql`) covering nodes, keys, blobs,
   content, tags, sources, evidence, uploads, reports, moderation events,
   federation outbox/inbox, block rules and audit log.
-- Content-addressed local storage with atomic writes and hash verification.
+- Content-addressed local storage with atomic writes, hash verification and
+  thumbnails.
+- A separate `weft-decode` worker for GIF/PNG/JPEG/WebP with dimensions, frame
+  count, decoded-memory limits and JPEG thumbnails.
+- Multipart upload with `open`/`review`/`closed` policies, per-client token
+  buckets, quarantine, licence evidence and reports/disputes.
+- Search, newest/trending lists, tags, signed manifests, sources, byte serving
+  with Range/ETag/Digest, and admin queue/approve/reject/restrict/remove/
+  reinstate/stats/reports.
 - `GET /healthz`, `GET /readyz`, `GET /metrics` and `GET /api/v1/node`.
 - `flake.nix`, `shell.nix` and `.envrc` for a reproducible Nix dev shell and
   package build.
@@ -58,8 +67,10 @@ issues or release notes.
 
 ## What does not exist
 
-- Upload, quarantine, search, manifests or media serving.
+- Local block rules, orphan/quota reporting and upload/decode/storage metrics.
+- OpenAPI JSON serving (`/api/openapi.json`).
 - A deployed or production-tested node.
+- ActivityPub federation, replication and accounting.
 - Jabu animation fix or GIF picker.
 
 ## Test inventory
@@ -67,8 +78,9 @@ issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust unit tests | 20 | `cargo test --workspace` |
+| Rust unit tests | 26 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
+| Upload/review/search/media flow | 1 | `... --test upload_flow -- --ignored` |
 | Protocol golden vectors | 0 | Milestone 2 |
 | Federation interop | 0 | Milestone 2 |
 
@@ -91,7 +103,7 @@ issues or release notes.
 
 ## Next milestone
 
-Milestone 0 is complete. The next implementation step is the standalone MVP in
-[`MVP.md`](MVP.md), but Milestone 1 still requires the maintainer to approve the
-design review for that scope. See [`DESIGN_REVIEW.md`](DESIGN_REVIEW.md) and
-[`PLAN.md`](PLAN.md).
+The Milestone 1 vertical slice works. Finish the remaining M1 items in
+[`PLAN.md`](PLAN.md) and verify the first CI container/Compose run before calling
+the standalone MVP complete. Federation, replication and accounting remain
+gated.

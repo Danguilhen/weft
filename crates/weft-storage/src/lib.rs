@@ -17,6 +17,9 @@ pub trait BlobStore: Send + Sync {
     fn get(&self, hash: &BlobHash) -> Result<Vec<u8>, StorageError>;
     fn exists(&self, hash: &BlobHash) -> Result<bool, StorageError>;
     fn delete(&self, hash: &BlobHash) -> Result<(), StorageError>;
+    fn put_thumbnail(&self, hash: &BlobHash, bytes: &[u8]) -> Result<String, StorageError>;
+    fn get_thumbnail(&self, key: &str) -> Result<Vec<u8>, StorageError>;
+    fn delete_thumbnail(&self, key: &str) -> Result<(), StorageError>;
     fn check(&self) -> Result<(), StorageError>;
 }
 
@@ -124,6 +127,26 @@ impl BlobStore for LocalStore {
         }
     }
 
+    fn put_thumbnail(&self, hash: &BlobHash, bytes: &[u8]) -> Result<String, StorageError> {
+        let directory = self.root.join("thumbs");
+        fs::create_dir_all(&directory)?;
+        let key = format!("thumbs/{}.jpg", hash.as_str());
+        fs::write(self.root.join(&key), bytes)?;
+        Ok(key)
+    }
+
+    fn get_thumbnail(&self, key: &str) -> Result<Vec<u8>, StorageError> {
+        fs::read(safe_relative_path(&self.root, key)?).map_err(StorageError::Io)
+    }
+
+    fn delete_thumbnail(&self, key: &str) -> Result<(), StorageError> {
+        match fs::remove_file(safe_relative_path(&self.root, key)?) {
+            Ok(()) => Ok(()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(StorageError::Io(error)),
+        }
+    }
+
     fn check(&self) -> Result<(), StorageError> {
         let path = self
             .root
@@ -133,6 +156,18 @@ impl BlobStore for LocalStore {
         fs::remove_file(path)?;
         Ok(())
     }
+}
+
+fn safe_relative_path(root: &Path, key: &str) -> Result<PathBuf, StorageError> {
+    let path = Path::new(key);
+    if path.is_absolute()
+        || path
+            .components()
+            .any(|component| matches!(component, std::path::Component::ParentDir))
+    {
+        return Err(StorageError::InvalidKey);
+    }
+    Ok(root.join(path))
 }
 
 #[derive(Debug, Error)]
@@ -145,6 +180,8 @@ pub enum StorageError {
     HashMismatch { expected: String, actual: String },
     #[error("invalid content hash")]
     InvalidHash,
+    #[error("invalid storage key")]
+    InvalidKey,
 }
 
 #[cfg(test)]
@@ -188,6 +225,18 @@ mod tests {
         store.delete(&hash).unwrap();
         assert!(!store.exists(&hash).unwrap());
         store.delete(&hash).unwrap();
+    }
+
+    #[test]
+    fn stores_thumbnails_by_key() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = LocalStore::new(directory.path()).unwrap();
+        let hash = hash_bytes(b"thumbnail source");
+        let key = store.put_thumbnail(&hash, b"thumb").unwrap();
+        assert!(key.starts_with("thumbs/"));
+        assert_eq!(store.get_thumbnail(&key).unwrap(), b"thumb");
+        store.delete_thumbnail(&key).unwrap();
+        assert!(store.get_thumbnail(&key).is_err());
     }
 
     #[test]

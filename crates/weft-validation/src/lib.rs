@@ -7,6 +7,10 @@
 
 use thiserror::Error;
 
+pub mod decode;
+
+pub use decode::{decode_file, DecodeError, DecodedMedia};
+
 /// Media formats accepted by the MVP.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MediaFormat {

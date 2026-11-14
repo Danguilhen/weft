@@ -6,7 +6,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /src
 COPY . .
-RUN cargo build --release -p weft-cli
+RUN cargo build --release -p weft-cli -p weft-validation
 
 FROM debian:bookworm-slim
 RUN apt-get update \
@@ -16,6 +16,7 @@ RUN apt-get update \
     && install -d -o weft -g weft /var/lib/weft /etc/weft
 
 COPY --from=builder /src/target/release/weft /usr/local/bin/weft
+COPY --from=builder /src/target/release/weft-decode /usr/local/bin/weft-decode
 COPY deploy/config.toml /etc/weft/config.toml
 
 USER weft

@@ -47,13 +47,16 @@
             version = "0.1.0";
             src = source pkgs;
             cargoLock.lockFile = ./Cargo.lock;
-            cargoBuildFlags = [ "--package" "weft-cli" ];
+            cargoBuildFlags = [ "--package" "weft-cli" "--package" "weft-validation" ];
             nativeBuildInputs = [ pkgs.pkg-config ];
             doCheck = false;
             installPhase = ''
               binary="$(find target -type f -name weft -path "*/release/*" | head -n 1)"
               test -n "$binary"
               install -Dm755 "$binary" $out/bin/weft
+              decoder="$(find target -type f -name weft-decode -path "*/release/*" | head -n 1)"
+              test -n "$decoder"
+              install -Dm755 "$decoder" $out/bin/weft-decode
             '';
             meta = {
               description = "Weft node command line";

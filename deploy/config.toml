@@ -15,6 +15,12 @@ external_url = "http://127.0.0.1:8080"
 max_json_bytes = 1048576
 request_timeout_seconds = 30
 trusted_proxies = ["127.0.0.1/32", "::1/128"]
+# Set WEFT__SERVER__ADMIN_TOKEN in the environment; empty disables admin.
+admin_token = ""
+
+[decode]
+worker_path = "/usr/local/bin/weft-decode"
+timeout_seconds = 10
 
 [database]
 url = "postgres://weft:weft@db:5432/weft"

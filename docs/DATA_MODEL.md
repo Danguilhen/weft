@@ -77,7 +77,7 @@ Local listing metadata.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Local listing ID |
-| `hash` | `char(64)` FK → `blobs` | |
+| `hash` | `char(64)` | The blob may be deleted while the tombstone remains; migration 0002 drops the FK. |
 | `title` | `text` | |
 | `description` | `text` | |
 | `origin_node` | `text` | Node actor URL that first published it |
@@ -112,7 +112,7 @@ Known locations for a content hash.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | |
-| `hash` | `char(64)` FK → `blobs` | |
+| `hash` | `char(64)` | The blob may be deleted while the tombstone remains; migration 0002 drops the FK. |
 | `node_id` | `text` | Node actor URL |
 | `url` | `text` | Media URL |
 | `bytes` | `bigint` | Nullable |

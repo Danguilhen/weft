@@ -55,7 +55,7 @@ jobs:
           toolchain: "1.99.0"
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
-      - run: cargo test -p weft-server --test postgres_smoke -- --ignored
+      - run: cargo test -p weft-server --test postgres_smoke --test upload_flow -- --ignored
 
   nix:
     runs-on: ubuntu-latest

@@ -20,8 +20,9 @@ docker compose -f deploy/docker-compose.yml up -d --build
 curl http://127.0.0.1:8080/healthz
 ```
 
-The Compose profile is a development/reference deployment. It has not been
-tested against a production reverse proxy or public traffic. Use
+The Compose profile is a development/reference deployment. It runs both
+`weft` and the isolated `weft-decode` worker. It has not been tested against a
+production reverse proxy or public traffic. Use
 [`../docs/OPERATIONS.md`](../docs/OPERATIONS.md) for the operational procedure.
 
 Rules:

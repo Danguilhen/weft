@@ -20,6 +20,7 @@ pub struct AppConfig {
     pub database: DatabaseConfig,
     pub storage: StorageConfig,
     pub upload: UploadConfig,
+    pub decode: DecodeConfig,
     pub logging: LoggingConfig,
     pub metrics: MetricsConfig,
     pub privacy: PrivacyConfig,
@@ -68,6 +69,8 @@ pub struct ServerConfig {
     pub max_json_bytes: usize,
     pub request_timeout_seconds: u64,
     pub trusted_proxies: Vec<String>,
+    /// Bearer token for the admin API. Empty disables admin access.
+    pub admin_token: String,
 }
 
 impl Default for ServerConfig {
@@ -78,6 +81,7 @@ impl Default for ServerConfig {
             max_json_bytes: 1_048_576,
             request_timeout_seconds: 30,
             trusted_proxies: vec!["127.0.0.1/32".to_string(), "::1/128".to_string()],
+            admin_token: String::new(),
         }
     }
 }
@@ -169,6 +173,23 @@ impl Default for UploadConfig {
             max_daily_bytes: "100MB".to_string(),
             rate_limit_ipv6_prefix: 64,
             proof_of_work: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DecodeConfig {
+    /// Path to `weft-decode`; empty means the sibling binary.
+    pub worker_path: String,
+    pub timeout_seconds: u64,
+}
+
+impl Default for DecodeConfig {
+    fn default() -> Self {
+        Self {
+            worker_path: String::new(),
+            timeout_seconds: 10,
         }
     }
 }

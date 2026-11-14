@@ -117,15 +117,18 @@ fn init(config_path: &Path, name: &str, public_url: &str, force: bool) -> Result
     config.node.public_url = public_url.to_string();
     config.node.key_file = key_path.to_string_lossy().to_string();
     config.storage.path = config_dir.join("data").to_string_lossy().to_string();
+    config.server.admin_token = random_token()?;
 
     fs::create_dir_all(&config.storage.path)
         .with_context(|| format!("creating storage path {}", config.storage.path))?;
     fs::write(config_path, config.to_toml()?)
         .with_context(|| format!("writing {}", config_path.display()))?;
+    restrict_permissions(config_path)?;
 
     println!("config:     {}", config_path.display());
     println!("key file:   {}", key_path.display());
     println!("public key: {public}");
+    println!("admin token: {}", config.server.admin_token);
     println!(
         "next:       weft migrate --config {}",
         config_path.display()
@@ -171,6 +174,12 @@ fn restrict_permissions(path: &Path) -> Result<()> {
 #[cfg(not(unix))]
 fn restrict_permissions(_path: &Path) -> Result<()> {
     Ok(())
+}
+
+fn random_token() -> Result<String> {
+    let mut bytes = [0_u8; 32];
+    getrandom::getrandom(&mut bytes).context("generating admin token")?;
+    Ok(base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes))
 }
 
 async fn migrate(config_path: &Path) -> Result<()> {

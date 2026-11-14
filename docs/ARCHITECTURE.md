@@ -1,10 +1,8 @@
 # Weft — architecture
 
-Status: **design; Milestone 0 scaffold implemented**. This document specifies
-the target architecture for the standalone MVP and the federation milestones.
-The scaffold, config, storage, migration and health server exist; upload,
-federation and replication do not. Milestone 1 requires the approval recorded in
-[`DESIGN_REVIEW.md`](DESIGN_REVIEW.md).
+Status: **design; Milestone 1 vertical slice implemented**. The upload, review,
+search, signed-manifest and media paths work. Federation and replication do not.
+See [`STATUS.md`](STATUS.md).
 
 Related decisions: [`adr/README.md`](adr/README.md). Open choices:
 [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md). Security analysis:

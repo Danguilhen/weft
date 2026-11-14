@@ -26,14 +26,13 @@ but its REST API and federation protocol are independent of any one client.
 The former working name was **OpenGIF**. Use **Weft** everywhere in the
 repository. `OpenGIF` may appear only in historical context.
 
-The project has completed **Milestone 0** (workspace, config, storage,
-migrations, health server, Docker and CI). The next implementation phase is the
-standalone MVP in `docs/MVP.md`.
+The project has completed **Milestone 0** and is working on the standalone MVP
+in `docs/MVP.md`. The upload → review → search → media vertical slice works.
 
-**Implementation gate:** Milestone 1 is not authorised yet. Read
-`docs/DESIGN_REVIEW.md` and do not implement upload, federation or replication
-until the maintainer approves that scope. Milestone 0 is complete; do not extend
-it silently.
+**Implementation gate:** Milestone 1 is approved and in progress. Do not start
+federation, replication or accounting until the design review approves those
+phases. Keep the standalone MVP working and update `docs/STATUS.md` for every
+behaviour change.
 
 ## Non-negotiables
 

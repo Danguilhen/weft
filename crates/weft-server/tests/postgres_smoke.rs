@@ -16,6 +16,7 @@ use axum::body::{to_bytes, Body};
 use axum::http::{Request, StatusCode};
 use tower::ServiceExt;
 use weft_core::AppConfig;
+use weft_core::NodeSigner;
 use weft_server::metrics::Metrics;
 use weft_server::{build_router, AppState, NodePublic};
 use weft_storage::LocalStore;
@@ -33,13 +34,19 @@ async fn health_ready_metrics_and_node_descriptor() {
     let directory = tempfile::tempdir().expect("temp directory");
     let storage = Arc::new(LocalStore::new(directory.path()).expect("local store"));
     let config = AppConfig::default();
+    let signer = NodeSigner::load_or_create(
+        directory.path().join("node.key"),
+        format!("{}#key-1", config.node.actor_url()),
+    )
+    .expect("node key");
+    let node = NodePublic::from_config(&config);
     let state = AppState::new(
         pool,
         storage,
         Arc::new(Metrics::default()),
-        NodePublic::from_config(&config),
-        1024 * 1024,
-        true,
+        node,
+        config,
+        signer,
     );
     let app = build_router(state);
 

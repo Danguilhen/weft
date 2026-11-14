@@ -11,10 +11,11 @@ name and domain are not final yet; see
 
 ## Status
 
-**Milestone 0 complete.** The repository contains the design pack, a Rust
-workspace, configuration and CLI scaffolding, the first PostgreSQL migration,
-content-addressed storage, health endpoints, Docker Compose and CI. The
-standalone MVP is not implemented yet.
+**Milestone 1 in progress.** The repository contains the design pack, a Rust
+workspace, the Nix dev shell, Docker Compose and CI. The standalone vertical
+slice works: upload → validation → quarantine → admin approval → search →
+signed manifest → media retrieval. Federation and replication are not
+implemented.
 
 - What exists and what does not: [`docs/STATUS.md`](docs/STATUS.md)
 - Open work and phase order: [`docs/PLAN.md`](docs/PLAN.md)

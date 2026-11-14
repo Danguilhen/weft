@@ -32,13 +32,14 @@ For the Compose profile:
 
 ```bash
 cp deploy/.env.example deploy/.env
-# edit deploy/.env
+# edit deploy/.env and set WEFT_ADMIN_TOKEN
 docker compose -f deploy/docker-compose.yml up -d --build
 curl http://127.0.0.1:8080/healthz
 ```
 
 The container starts with `deploy/config.toml`, applies migrations on startup,
-and listens on `0.0.0.0:8080`. For a local binary:
+and listens on `0.0.0.0:8080`. It runs `weft` and `weft-decode` side by side.
+For a local binary:
 
 ```bash
 weft init --config config.toml --public-url http://127.0.0.1:8080
