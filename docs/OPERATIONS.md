@@ -39,7 +39,10 @@ curl http://127.0.0.1:8080/healthz
 
 The container starts with `deploy/config.toml`, applies migrations on startup,
 and listens on `0.0.0.0:8080`. It runs `weft` and `weft-decode` side by side.
-For a local binary:
+For a local binary, `weft init` writes the config, the node key and a random
+admin token. `--public-url` sets both the published URL and the listener; a
+loopback or IP host is bound directly, while a DNS name binds `0.0.0.0` for a
+reverse proxy.
 
 ```bash
 weft init --config config.toml --public-url http://127.0.0.1:8080

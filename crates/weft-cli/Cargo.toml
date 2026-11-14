@@ -19,9 +19,13 @@ ed25519-dalek.workspace = true
 getrandom.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+url.workspace = true
 weft-core = { path = "../weft-core" }
 weft-db = { path = "../weft-db" }
 weft-server = { path = "../weft-server" }
+
+[dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

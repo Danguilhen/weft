@@ -33,6 +33,7 @@ enum Command {
         name: String,
         #[arg(long = "public-url", default_value = "http://127.0.0.1:8080")]
         public_url: String,
+        /// Overwrite an existing config file and node key.
         #[arg(long)]
         force: bool,
     },
@@ -40,6 +41,7 @@ enum Command {
     Keygen {
         #[arg(long, default_value = "node.key")]
         out: PathBuf,
+        /// Overwrite an existing config file and node key.
         #[arg(long)]
         force: bool,
     },
@@ -112,10 +114,27 @@ fn init(config_path: &Path, name: &str, public_url: &str, force: bool) -> Result
     }
     let public = generate_key(&key_path, true)?;
 
+    let parsed =
+        url::Url::parse(public_url).with_context(|| format!("parsing public URL {public_url}"))?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        bail!("public URL must use http or https");
+    }
+    let host = parsed
+        .host_str()
+        .context("public URL must include a host")?;
+    let port = parsed.port_or_known_default().unwrap_or(8080);
+    let bind_host = if host == "localhost" || host.parse::<std::net::IpAddr>().is_ok() {
+        host
+    } else {
+        "0.0.0.0"
+    };
+
     let mut config = AppConfig::default();
     config.node.name = name.to_string();
-    config.node.public_url = public_url.to_string();
+    config.node.public_url = public_url.trim_end_matches('/').to_string();
     config.node.key_file = key_path.to_string_lossy().to_string();
+    config.server.bind = format!("{bind_host}:{port}");
+    config.server.external_url = config.node.public_url.clone();
     config.storage.path = config_dir.join("data").to_string_lossy().to_string();
     config.server.admin_token = random_token()?;
 
@@ -189,4 +208,40 @@ async fn migrate(config_path: &Path) -> Result<()> {
     weft_db::migrate(&pool).await?;
     println!("migrations applied");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn init_binds_the_requested_loopback_url() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.toml");
+        init(&path, "Test node", "http://127.0.0.1:8099", false).unwrap();
+        let config = AppConfig::load(&path).unwrap();
+        assert_eq!(config.server.bind, "127.0.0.1:8099");
+        assert_eq!(config.server.external_url, "http://127.0.0.1:8099");
+        assert_eq!(config.node.public_url, "http://127.0.0.1:8099");
+        assert!(directory.path().join("node.key").exists());
+        assert!(directory.path().join("data").is_dir());
+    }
+
+    #[test]
+    fn init_binds_all_interfaces_for_a_public_name() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.toml");
+        init(&path, "Test node", "https://gifs.example", false).unwrap();
+        let config = AppConfig::load(&path).unwrap();
+        assert_eq!(config.server.bind, "0.0.0.0:443");
+        assert_eq!(config.server.external_url, "https://gifs.example");
+    }
+
+    #[test]
+    fn init_refuses_to_overwrite_a_config() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("config.toml");
+        init(&path, "Test node", "http://127.0.0.1:8099", false).unwrap();
+        assert!(init(&path, "Other node", "http://127.0.0.1:8100", false).is_err());
+    }
 }

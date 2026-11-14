@@ -45,8 +45,9 @@ Scope and acceptance: [`MVP.md`](MVP.md).
 ### Remaining
 
 - Verify the first CI run, the container build and the Compose health check.
-- Run the acceptance demo on the supported 2 vCPU / 2 GB / 20 GB profile and
-  record the numbers in `STATUS.md`.
+
+The local acceptance demo passed under 2 GB / 2 vCPU caps; see
+[`STATUS.md`](STATUS.md). The Compose step is the only unrun acceptance item.
 
 Exit criteria: the ten-step acceptance demo in `MVP.md` passes on the supported
 2 vCPU / 2 GB / 20 GB node with PostgreSQL.

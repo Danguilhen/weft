@@ -12,7 +12,7 @@ Status: Milestone 1 in progress; the standalone vertical slice works. Started
 | Design review | Approved for Milestones 0 and 1; CI verification pending | `DESIGN_REVIEW.md` |
 | Implementation | Milestone 1 in progress; vertical slice works | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust tests | 27 passing | `cargo test --workspace` |
+| Rust tests | 30 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
@@ -81,7 +81,7 @@ claim otherwise in README, issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust tests | 27 | `cargo test --workspace` |
+| Rust tests | 30 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Upload/review/search/media flow | 4 | `... --test upload_flow -- --ignored` |
 | Real worker | 1 | `cargo test -p weft-validation --test worker_smoke` |
@@ -105,8 +105,34 @@ claim otherwise in README, issues or release notes.
 | ADR-011 | Anonymous-upload anti-abuse: token buckets, quotas, optional PoW |
 | ADR-012 | Weft naming and the Weft Media Protocol (WMP) |
 
+## Acceptance run (2026-11-14)
+
+The ten-step demo in [`MVP.md`](MVP.md) was run against a local PostgreSQL 16
+database with the release `weft` and `weft-decode` binaries. The service ran in
+a transient systemd user unit capped at `MemoryMax=2G`, `MemorySwapMax=0` and
+`CPUQuota=200%`, which is the supported 2 vCPU / 2 GB profile (the host itself
+is larger). Disk is 38 GB free, above the 20 GB floor.
+
+| Step | Result |
+|---|---|
+| Upload a two-frame GIF | `202`, hash `dbcabf76…65af7b` |
+| Appears in `review`; operator approves | Queue hit, `200` |
+| Search returns the active item with source | 1 hit, `https://example.org/acceptance.gif` |
+| `/media/{hash}` returns exact bytes | SHA-256 matches; `ETag` and `Digest` present |
+| Range request | `206`, 16 bytes |
+| `/api/v1/media/{hash}` | Ed25519 signature verified with the node key |
+| Remove content | Search/manifest/media return no item / `404`; row retained as `removed` |
+| `/metrics` | Upload, decode, storage, media and request counters present |
+| `check_docs.py` and `cargo test --workspace` | Pass |
+
+Peak cgroup memory was 4.1 MB and CPU time 0.08 s for the upload, review,
+search, media, Range and removal flow with a small GIF. These numbers bound the
+idle/control-plane cost only; decoding limits are covered by the worker tests.
+The Compose start (`docker compose up -d`) was not run because Docker is not
+installed on this host; it remains the CI gate.
+
 ## Next milestone
 
-The Milestone 1 feature set works locally. The remaining gate is the first CI
-run (container and Compose) and the acceptance demo on the supported profile.
-Federation, replication and accounting remain gated.
+The Milestone 1 feature set works locally and the acceptance demo passes under
+the supported memory/CPU caps. The remaining gate is the first CI run
+(container and Compose). Federation, replication and accounting remain gated.
