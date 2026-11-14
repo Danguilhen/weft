@@ -5,12 +5,16 @@ implemented; update this document with the code.
 
 ## 1. Minimum node
 
-The reference small node:
+The recommended public small node:
 
-- 1 vCPU, 1 GB RAM, 10 GB storage;
+- 2 vCPU, 2 GB RAM, 20 GB storage;
 - PostgreSQL 16;
 - a reverse proxy with TLS;
 - outbound HTTPS for federation and replication (optional in the MVP).
+
+A 1 vCPU / 1 GB / 10 GB node is possible for a small, read-mostly library with the
+conservative decode limits in `CONFIG.md` (128 MB, 8 MP, 150 frames). Measure
+before recommending it for public uploads.
 
 A node with federation and replication disabled needs no inbound peer access
 beyond the public HTTP API.

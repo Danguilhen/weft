@@ -8,20 +8,21 @@ specification for the first milestones, not a description of finished code.
 1. [`../README.md`](../README.md) — what Weft is and why.
 2. [`STATUS.md`](STATUS.md) — what exists today.
 3. [`PLAN.md`](PLAN.md) — the open-work queue and phase gates.
-4. [`ARCHITECTURE.md`](ARCHITECTURE.md) — components and data flow.
-5. [`MVP.md`](MVP.md) — the first standalone milestone.
-6. [`PROTOCOL.md`](PROTOCOL.md) — media distribution protocol.
-7. [`FEDERATION.md`](FEDERATION.md) — ActivityPub integration.
-8. [`API.md`](API.md) and [`openapi.yaml`](openapi.yaml) — REST surface.
-9. [`DATA_MODEL.md`](DATA_MODEL.md) — PostgreSQL model.
-10. [`CONFIG.md`](CONFIG.md) — node configuration.
-11. [`THREAT_MODEL.md`](THREAT_MODEL.md), [`PRIVACY.md`](PRIVACY.md) — security and privacy.
-12. [`CONTENT_LICENSING.md`](CONTENT_LICENSING.md) — media licence model.
-13. [`OPERATIONS.md`](OPERATIONS.md) — self-hosting and maintenance.
-14. [`XMPP.md`](XMPP.md) — Jabu integration.
-15. [`GOVERNANCE.md`](GOVERNANCE.md) — project decision-making.
-16. [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) — unresolved choices.
-17. [`adr/README.md`](adr/README.md) — decision records.
+4. [`DESIGN_REVIEW.md`](DESIGN_REVIEW.md) — review findings and the implementation gate.
+5. [`ARCHITECTURE.md`](ARCHITECTURE.md) — components and data flow.
+6. [`MVP.md`](MVP.md) — the first standalone milestone.
+7. [`PROTOCOL.md`](PROTOCOL.md) — media distribution protocol.
+8. [`FEDERATION.md`](FEDERATION.md) — ActivityPub integration.
+9. [`API.md`](API.md) and [`openapi.yaml`](openapi.yaml) — REST surface.
+10. [`DATA_MODEL.md`](DATA_MODEL.md) — PostgreSQL model.
+11. [`CONFIG.md`](CONFIG.md) — node configuration.
+12. [`THREAT_MODEL.md`](THREAT_MODEL.md), [`PRIVACY.md`](PRIVACY.md) — security and privacy.
+13. [`CONTENT_LICENSING.md`](CONTENT_LICENSING.md) — media licence model.
+14. [`OPERATIONS.md`](OPERATIONS.md) — self-hosting and maintenance.
+15. [`XMPP.md`](XMPP.md) — Jabu integration.
+16. [`GOVERNANCE.md`](GOVERNANCE.md) — project decision-making.
+17. [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) — unresolved choices.
+18. [`adr/README.md`](adr/README.md) — decision records.
 
 ## Ownership
 
@@ -29,6 +30,7 @@ specification for the first milestones, not a description of finished code.
 |---|---|
 | `STATUS.md` | What exists, what is tested, what is open |
 | `PLAN.md` | Open work only |
+| `DESIGN_REVIEW.md` | Architecture/threat-model review and implementation gate |
 | `ARCHITECTURE.md` | Components, boundaries, data flow |
 | `PROTOCOL.md` | Media wire protocol |
 | `FEDERATION.md` | ActivityPub objects, signatures, events |

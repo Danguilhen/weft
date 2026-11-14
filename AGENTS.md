@@ -30,6 +30,11 @@ The project is in the **design phase**. The deliverable for the current phase is
 the documentation pack; implementation starts with the standalone MVP in
 `docs/MVP.md`.
 
+**Implementation gate:** no code is authorised until `docs/DESIGN_REVIEW.md`
+records an approved verdict. Read the review findings and conditions before
+scaffolding anything. The current verdict is conditional approval with sign-off
+pending.
+
 ## Non-negotiables
 
 1. **No blockchain, cryptocurrency, tokens, transferable credit or mandatory

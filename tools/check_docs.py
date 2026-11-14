@@ -39,6 +39,7 @@ REQUIRED = [
     "docs/GOVERNANCE.md",
     "docs/XMPP.md",
     "docs/OPEN_QUESTIONS.md",
+    "docs/DESIGN_REVIEW.md",
     "docs/openapi.yaml",
     "docs/adr/README.md",
 ]

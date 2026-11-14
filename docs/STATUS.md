@@ -7,6 +7,9 @@ Status: design phase, started 2026-11-14. This is the only status page.
 | Area | State | Evidence |
 |---|---|---|
 | Design documentation | Complete for Phase 1 | This docs pack and `PLAN.md` |
+| Architecture and threat model | Drafted; under review | `ARCHITECTURE.md`, `THREAT_MODEL.md` |
+| Design review | Conditional approval; sign-off pending | `DESIGN_REVIEW.md` |
+| Implementation | **Not authorised** | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
 | Rust workspace | Not started | — |
 | Standalone node MVP | Not started | — |
@@ -24,8 +27,8 @@ yet. Do not claim otherwise in README, issues or release notes.
 
 - `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `SECURITY.md`, `LICENSING.md`.
 - Architecture, protocol, federation, API, data-model, config, MVP, threat
-  model, privacy, operations, content-licensing, governance, XMPP and open
-  questions documents.
+  model, design review, privacy, operations, content-licensing, governance,
+  XMPP and open questions documents.
 - ADR-001 through ADR-008.
 - OpenAPI 3.1 draft for the MVP REST surface.
 - JSON schemas for the media manifest and node descriptor.
@@ -67,6 +70,8 @@ yet. Do not claim otherwise in README, issues or release notes.
 
 ## Next milestone
 
-Milestone 0 in [`PLAN.md`](PLAN.md): resolve the blocking questions, scaffold the
-Rust workspace, add CI and the Docker Compose skeleton. Then start the standalone
-MVP in [`MVP.md`](MVP.md).
+The maintainer must review and sign off
+[`DESIGN_REVIEW.md`](DESIGN_REVIEW.md). Until then, no code is authorised.
+After sign-off, Milestone 0 in [`PLAN.md`](PLAN.md) starts with the workspace
+scaffold, CI and the Docker Compose skeleton; the standalone MVP follows in
+[`MVP.md`](MVP.md).

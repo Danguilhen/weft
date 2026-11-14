@@ -71,7 +71,7 @@ mode = "review"                   # open | review | closed
 allowed_mimes = ["image/gif", "image/png", "image/jpeg", "image/webp"]
 max_pixels = 16000000
 max_frames = 300
-max_decoded_memory = "256MB"
+max_decoded_memory = "128MB"
 decode_timeout_seconds = 10
 max_title_chars = 200
 max_description_chars = 2000
@@ -156,7 +156,7 @@ max_manifest_requests_per_minute = 300
 | `upload.mode` | `review` | Anonymous open uploads are too risky for a new public node |
 | `storage.max_file_size` | 15 MB | Covers most GIFs without enabling abuse |
 | `upload.max_frames` | 300 | Bounds decode work |
-| `upload.max_decoded_memory` | 256 MB | Keeps small nodes alive |
+| `upload.max_decoded_memory` | 128 MB | Keeps a 1 GB node alive; raise to 256 MB on a 2 GB node |
 | `federation.enabled` | false | The MVP is standalone |
 | `replication.enabled` | false | Opt-in by design |
 | `search.backend` | `postgres` | No extra service for a small node |

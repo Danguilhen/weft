@@ -195,6 +195,19 @@ Rules:
 
 ## 5. Inbox processing
 
+### JSON-LD safety
+
+- Use a **pinned local JSON-LD context**. Never fetch a remote context from an
+  activity.
+- Reject unknown `@context` URLs rather than dereferencing them. The context is a
+  fixed constant shipped with the node.
+- Parse a bounded JSON document; enforce depth, key count, string length and body
+  size limits.
+- Validate the `weft:*` fields against a fixed schema before acting on them.
+
+This prevents an activity from turning the inbox into an SSRF or denial-of-service
+primitive. See `THREAT_MODEL.md` F-04/F-05.
+
 For each inbound activity:
 
 1. Enforce method, content type, body size and rate limits.
@@ -212,6 +225,15 @@ For each inbound activity:
     retry storms. Return `4xx` for malformed or unauthenticated input.
 
 Media download is always a separate, scheduled, policy-controlled action.
+
+### Outbox and dedupe
+
+- A state change and its outbox row are written in one database transaction.
+- A publisher worker signs and delivers queued activities with exponential
+  backoff and a dead-letter state.
+- Inbound activities are inserted in a persistent inbox table before processing;
+  a duplicate ID is acknowledged but not applied twice.
+- The tables are defined in `DATA_MODEL.md` under the Phase 2 federation tables.
 
 ## 6. Signatures
 

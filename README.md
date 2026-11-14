@@ -17,6 +17,7 @@ has been written yet.
 
 - What exists and what does not: [`docs/STATUS.md`](docs/STATUS.md)
 - Open work and phase order: [`docs/PLAN.md`](docs/PLAN.md)
+- Design review and implementation gate: [`docs/DESIGN_REVIEW.md`](docs/DESIGN_REVIEW.md)
 - Documentation index: [`docs/README.md`](docs/README.md)
 
 ## Why
@@ -89,7 +90,9 @@ tools/                Documentation checks, graphify wrapper
 
 ## Documentation
 
+- [`docs/DESIGN_REVIEW.md`](docs/DESIGN_REVIEW.md) — review findings and the implementation gate
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — components and data flow
+- [`docs/THREAT_MODEL.md`](docs/THREAT_MODEL.md) — adversaries, threats and mitigations
 - [`docs/PROTOCOL.md`](docs/PROTOCOL.md) — media distribution protocol
 - [`docs/FEDERATION.md`](docs/FEDERATION.md) — ActivityPub integration
 - [`docs/API.md`](docs/API.md) — REST API

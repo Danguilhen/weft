@@ -120,8 +120,9 @@ check. An operator can moderate the node from a CLI or admin API.
 
 ## Success metrics
 
-- A 1 vCPU / 1 GB node can serve the demo with PostgreSQL and a 10 GB storage
-  budget.
+- A 2 vCPU / 2 GB node serves the demo comfortably. A 1 vCPU / 1 GB node can
+  serve a small read-mostly library with the conservative 128 MB decode budget
+  and 150-frame limit.
 - No upload can make the node allocate unbounded memory or time.
 - A failed validation leaves no blob and no searchable record.
 - A deleted item is not returned by search or media endpoints.

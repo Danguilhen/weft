@@ -233,7 +233,52 @@ Unique `(served_by, nonce)`. Indexes: `(served_by, created_at)`,
 | `last_seen` | `timestamptz` | |
 | `last_verified_at` | `timestamptz` | |
 
+### `federation_outbox` and `federation_inbox` (Phase 2)
+
+The outbox makes "change state" and "announce state" atomic. The inbox table is
+the persistent replay/dedupe cache.
+
+`federation_outbox`:
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | |
+| `activity_id` | `text` unique | Signed activity ID |
+| `kind` | `text` | `create`, `update`, `delete`, `flag`, `moderation` |
+| `target` | `text` | Inbox URL |
+| `payload` | `jsonb` | Signed activity |
+| `state` | `outbox_state` | `queued`, `sending`, `sent`, `failed`, `dead` |
+| `attempts` | `integer` | |
+| `next_attempt_at` | `timestamptz` | |
+| `last_error` | `text` | Redacted |
+| `created_at` | `timestamptz` | |
+| `sent_at` | `timestamptz` | Nullable |
+
+Indexes: `(state, next_attempt_at)`, `activity_id`.
+
+`federation_inbox`:
+
+| Column | Type | Notes |
+|---|---|---|
+| `activity_id` | `text` PK | Replay/dedupe key |
+| `actor` | `text` | |
+| `received_at` | `timestamptz` | |
+| `digest` | `text` | Request signature/digest fingerprint |
+| `result` | `text` | `accepted`, `ignored`, `rejected` |
+| `expires_at` | `timestamptz` | Replay window retention |
+
+Indexes: `received_at`, `expires_at`.
+
+Rules:
+
+- The content/moderation change and its outbox row are inserted in the same
+  transaction.
+- A publisher worker sends queued rows with exponential backoff and a dead state.
+- An inbound activity is inserted into the inbox before processing; a duplicate
+  is acknowledged but not applied again.
+
 ### `node_blocks` / `url_blocks` / `tag_blocks`
+
 
 Local policy rules:
 
@@ -281,6 +326,7 @@ moderation_category CONTENT_REPORTED | LICENCE_DISPUTED | CONTENT_RESTRICTED |
                     CONTENT_BLOCKED | CONTENT_REMOVED | CONTENT_REINSTATED |
                     NODE_SUSPENDED
 node_status         unknown | allowed | blocked
+outbox_state        queued | sending | sent | failed | dead
 ```
 
 Use PostgreSQL enums or text with `CHECK` constraints. Text plus checks is easier

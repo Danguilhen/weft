@@ -30,10 +30,19 @@ standalone release.
 
 ## 2. Milestone 0 — Foundation
 
+**Gate:** implementation is not authorised until the maintainer approves
+[`DESIGN_REVIEW.md`](DESIGN_REVIEW.md). Do not scaffold the workspace before the
+review verdict changes.
+
 Remaining:
 
-- Resolve the blocking questions Q1, Q2, Q4, Q5 and Q6 in
-  [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md); record each result in an ADR.
+- Obtain maintainer sign-off on the architecture, threat model and design review.
+- Resolve Q11 (minimum node size) or accept the conservative limits in
+  `ARCHITECTURE.md`; record the result.
+- Resolve Q11 (node size) in [`OPEN_QUESTIONS.md`](OPEN_QUESTIONS.md) and record
+  the result in an ADR. Q4 (upload policy) and Q7 (anti-abuse) are due before
+  Milestone 1. Q1, Q2, Q3 and Q6 are resolved at their phase gates; Q5 is already
+  covered by ADR-002.
 - Scaffold the Rust workspace with `weft-core`, `weft-db`, `weft-storage`,
   `weft-validation`, `weft-server` and `weft-cli`; add `weft-client` when the
   API shape is stable.
@@ -57,6 +66,10 @@ answers `/healthz`; the test harness runs against PostgreSQL; CI is green.
 
 ## 3. Milestone 1 — Standalone MVP
 
+**Gate:** `DESIGN_REVIEW.md` is approved for Milestone 1; Q4 and Q7 are
+resolved; DR-01 (decoder worker), DR-02 (pinned context) and DR-03
+(outbox/inbox schema) are accepted as implementation requirements.
+
 Scope and acceptance: [`MVP.md`](MVP.md).
 
 ### Upload pipeline
@@ -65,6 +78,8 @@ Scope and acceptance: [`MVP.md`](MVP.md).
   policies.
 - Add per-IP token buckets using a salted, rotating hash; document the retention
   window.
+- Add the `weft-decode` worker: separate process, fd/path handoff, rlimits,
+  timeout, no network and no database access.
 - Add decode limits: file size, pixels, frames, decoded memory and time.
 - Add format sniffing and a decoder allow-list; reject SVG, HTML and unknown
   containers.
@@ -120,10 +135,15 @@ Exit criteria: the ten-step acceptance demo in `MVP.md` passes on a 1 vCPU /
 
 ## 4. Milestone 2 — ActivityPub federation
 
+**Gate:** Q1, Q2 and Q3 are resolved in ADRs; DR-06 golden vectors and DR-09
+removal flow are implemented and tested; a two-node interop plan exists.
+
 - Add the node actor, Ed25519 key publication, key rotation and revocation
   history.
+- Pin a local JSON-LD context and reject or ignore remote context URLs.
 - Implement HTTP Signatures for inbound and outbound requests, with replay
   protection, clock skew, body digests and a nonce cache.
+- Add the transactional outbox and persistent inbox dedupe tables/workers.
 - Implement `/.well-known/weft`, the node descriptor and node discovery via
   bootstrap nodes and peer exchange.
 - Implement signed `Create`, `Update` and `Delete` for content metadata; never

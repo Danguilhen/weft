@@ -172,6 +172,10 @@ Errors:
 
 The bytes are not public until the content is approved, unless policy is `open`.
 
+An optional `Idempotency-Key` request header makes retries safe: a repeated
+upload with the same key returns the same `uploadId` and `contentId` instead of
+creating a duplicate.
+
 ## 6. Reports and licence disputes
 
 ### `POST /api/v1/report`
