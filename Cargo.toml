@@ -6,6 +6,7 @@ members = [
     "crates/weft-validation",
     "crates/weft-server",
     "crates/weft-cli",
+    "crates/weft-client",
 ]
 resolver = "2"
 

@@ -13,7 +13,7 @@ This is the only status page.
 | Design review | Approved for Milestones 0 and 1; CI verified | `DESIGN_REVIEW.md` |
 | Implementation | Milestone 1 complete; CI verified | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust tests | 33 passing | `cargo test --workspace` |
+| Rust tests | 42 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
@@ -41,7 +41,7 @@ implemented. Do not claim otherwise in README, issues or release notes.
   XMPP and open questions documents.
 - ADR-001 through ADR-012.
 - Rust workspace with `weft-core`, `weft-db`, `weft-storage`,
-  `weft-validation`, `weft-server` and `weft-cli`.
+  `weft-validation`, `weft-server`, `weft-client` and `weft-cli`.
 - `weft init`, `weft keygen`, `weft migrate`, `weft doctor` and `weft serve`
   commands. `weft doctor` reads cgroup v1/v2 memory and CPU limits, so a
   constrained container is checked against the 2 GiB / 2 vCPU profile. Relative config, key and storage paths are resolved against the
@@ -63,6 +63,8 @@ implemented. Do not claim otherwise in README, issues or release notes.
 - Source/attribution metadata, view counts, upload/decode/storage metrics,
   OpenAPI JSON, orphan cleanup and a storage quota. The search backend is behind
   a `SearchIndex` trait for a future Meilisearch adapter.
+- `weft-client`, an MIT-licensed typed client for discovery, manifests and
+  original-byte downloads. It is independent of the server crates.
 - `GET /healthz`, `GET /readyz`, `GET /metrics` and `GET /api/v1/node`.
 - `flake.nix`, `shell.nix` and `.envrc` for a reproducible Nix dev shell and
   package build.
@@ -85,7 +87,7 @@ implemented. Do not claim otherwise in README, issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust tests | 33 | `cargo test --workspace` |
+| Rust tests | 42 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Upload/review/search/media flow | 4 | `... --test upload_flow -- --ignored` |
 | Real worker | 1 | `cargo test -p weft-validation --test worker_smoke` |

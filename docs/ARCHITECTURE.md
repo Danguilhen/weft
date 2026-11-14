@@ -79,7 +79,7 @@ the bytes. See ADR-001 and ADR-008.
 | `weft-validation` | Format sniffing, decode limits, thumbnails, metadata stripping; `weft-decode` worker binary | `weft-core` |
 | `weft-federation` | Actor, inbox/outbox, signatures, discovery, events | `weft-core`, `weft-db`, HTTP client |
 | `weft-server` | Axum routers, auth, rate limits, application services, metrics | All server crates |
-| `weft-client` | Typed REST client for Jabu and other apps | `weft-core`, HTTP client |
+| `weft-client` | Typed REST client for Jabu and other apps | HTTP client only |
 | `weft-cli` | `init`, `keygen`, `migrate`, `serve`, `verify`, `import`, `reindex` | Server crates |
 
 Rules:
