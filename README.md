@@ -11,9 +11,10 @@ name and domain are not final yet; see
 
 ## Status
 
-**Milestone 1 is complete locally** (the CI container/Compose start is still
-unverified). The repository contains the design pack, a Rust workspace, the Nix
-dev shell, Docker Compose and CI. The standalone vertical slice works: upload →
+**Milestone 1 is complete**, including the first CI run, container build and
+Compose health check. The repository contains the design pack, a Rust
+workspace, the Nix dev shell, Docker Compose and CI. The standalone vertical
+slice works: upload →
 validation → quarantine → admin approval → search → signed manifest → media
 retrieval, plus moderation, licence evidence, block rules, storage cleanup,
 metrics and OpenAPI. Federation and replication are not implemented.

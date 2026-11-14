@@ -1,7 +1,8 @@
 # Weft — status
 
-Status: Milestone 1 complete locally; only the CI container/Compose start is
-unverified. Started 2026-11-14. This is the only status page.
+Status: Milestone 1 complete; the first CI run on `main` passed all jobs,
+including the container build and Compose health check. Started 2026-11-14.
+This is the only status page.
 
 ## Summary
 
@@ -9,14 +10,15 @@ unverified. Started 2026-11-14. This is the only status page.
 |---|---|---|
 | Design documentation | Complete for Phase 1 | This docs pack and `PLAN.md` |
 | Architecture and threat model | Complete through Milestone 1; review recorded | `ARCHITECTURE.md`, `THREAT_MODEL.md` |
-| Design review | Approved for Milestones 0 and 1; CI verification pending | `DESIGN_REVIEW.md` |
-| Implementation | Milestone 1 complete locally; CI start pending | `DESIGN_REVIEW.md` §7–9 |
+| Design review | Approved for Milestones 0 and 1; CI verified | `DESIGN_REVIEW.md` |
+| Implementation | Milestone 1 complete; CI verified | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust tests | 32 passing | `cargo test --workspace` |
+| Rust tests | 33 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
-| Standalone node MVP | Complete locally; CI container/Compose start pending | `upload_flow` test |
+| CI | Passing: 7 jobs | Run 43621500823 on `main` |
+| Standalone node MVP | Complete; CI container/Compose verified | `upload_flow` test |
 | ActivityPub federation | Not started | — |
 | Media replication | Not started | — |
 | Contribution accounting | Not started | — |
@@ -83,7 +85,7 @@ implemented. Do not claim otherwise in README, issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust tests | 32 | `cargo test --workspace` |
+| Rust tests | 33 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Upload/review/search/media flow | 4 | `... --test upload_flow -- --ignored` |
 | Real worker | 1 | `cargo test -p weft-validation --test worker_smoke` |
@@ -133,12 +135,12 @@ is larger). Disk is 38 GB free, above the 20 GB floor.
 Peak cgroup memory was 4.1 MB and CPU time 0.08 s for the upload, review,
 search, media, Range and removal flow with a small GIF. These numbers bound the
 idle/control-plane cost only; decoding limits are covered by the worker tests.
-The Compose acceptance step remains the CI gate. Its configuration was
-validated locally with `docker-compose config` (Compose 5.6.0); only the image
-build and health-check start are unrun.
+The Compose acceptance step passed in CI: the first run on `main` completed
+all seven jobs, including the container build and the Compose health check
+(run 43621500823, [workflow](https://github.com/Danguilhen/weft/actions/runs/43621500823)).
 
 ## Next milestone
 
-The Milestone 1 feature set works locally and the acceptance demo passes under
-the supported memory/CPU caps. The remaining gate is the first CI run
-(container and Compose). Federation, replication and accounting remain gated.
+Milestone 1 is complete. The local acceptance demo passes under the supported
+memory/CPU caps and the first CI run passed all jobs, including container and
+Compose. Federation, replication and accounting remain gated.

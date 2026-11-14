@@ -5,8 +5,8 @@ Documents: [`ARCHITECTURE.md`](ARCHITECTURE.md),
 [`THREAT_MODEL.md`](THREAT_MODEL.md)
 Scope: design for the standalone MVP, federation, replication and accounting.
 Reviewer: architecture author, for maintainer approval.
-Verdict: **approved for Milestone 1 (standalone MVP), subject to CI verification.
-Federation, replication and accounting remain gated.**
+Verdict: **approved for Milestone 1 (standalone MVP); CI verification passed on
+2026-11-14. Federation, replication and accounting remain gated.**
 
 ## 1. Purpose
 
@@ -192,8 +192,8 @@ safer than the first draft after the four high-severity changes. The remaining
 blockers are the maintainer sign-off and, for federation only, Q2/Q3 (namespace
 and key profile). The MVP decisions are recorded.
 
-Milestone 1 is approved and in progress. The design review verification gate is
-the first CI run, including the container and Compose jobs. Federation,
+Milestone 1 is complete. The design review verification gate, the first CI run
+including the container and Compose jobs, passed on 2026-11-14. Federation,
 replication and accounting remain gated.
 
 ## 9. Sign-off

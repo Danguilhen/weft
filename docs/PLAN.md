@@ -31,23 +31,21 @@ standalone release.
 ## 2. Milestone 0 — Foundation
 
 Complete. Evidence is in [`STATUS.md`](STATUS.md); the next open phase is
-Milestone 1.
+Milestone 2, which is gated on Q2/Q3.
 
 ## 3. Milestone 1 — Standalone MVP
 
-**Gate:** `DESIGN_REVIEW.md` is approved for Milestone 1; the first CI run on
-`main` passes all jobs, including container and Compose; DR-01 (decoder worker),
-DR-02 (pinned context) and DR-03 (outbox/inbox schema) are accepted as
+**Gate:** met. `DESIGN_REVIEW.md` is approved for Milestone 1; the first CI run
+on `main` passed all jobs, including container and Compose; DR-01 (decoder
+worker), DR-02 (pinned context) and DR-03 (outbox/inbox schema) are accepted as
 implementation requirements.
 
 Scope and acceptance: [`MVP.md`](MVP.md).
 
 ### Remaining
 
-- Verify the first CI run, the container build and the Compose health check.
-
-The local acceptance demo passed under 2 GB / 2 vCPU caps; see
-[`STATUS.md`](STATUS.md). The Compose step is the only unrun acceptance item.
+None. The acceptance demo passed under 2 GB / 2 vCPU caps and in the CI
+container/Compose run; see [`STATUS.md`](STATUS.md).
 
 Exit criteria: the ten-step acceptance demo in `MVP.md` passes on the supported
 2 vCPU / 2 GB / 20 GB node with PostgreSQL.
