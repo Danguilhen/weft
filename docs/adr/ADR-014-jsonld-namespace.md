@@ -17,8 +17,8 @@ the namespace is independent of a future brand domain.
 
 ## Decision
 
-- Canonical term namespace: `https://w3id.org/weft/ns#`.
-- Context document URL used in `@context`: `https://w3id.org/weft/ns`.
+- Canonical term namespace: `https://w3id.org/weft-network/ns#`.
+- Context document URL used in `@context`: `https://w3id.org/weft-network/ns`.
 - The context maps the `weft` prefix to the namespace. Terms are used as compact
   IRIs such as `weft:contentId`, `weft:manifest` and `weft:ModerationEvent`.
 - A canonical copy lives at [`../context/weft.jsonld`](../context/weft.jsonld).

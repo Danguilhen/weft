@@ -508,6 +508,9 @@
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
           }
         }
       }
@@ -1226,7 +1229,24 @@
         }
       },
       "RateLimited": {
-        "description": "Rate limited",
+        "description": "Rate limited or over a pending/daily quota",
+        "headers": {
+          "Retry-After": {
+            "schema": {
+              "type": "integer"
+            }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "ServiceUnavailable": {
+        "description": "Quarantine full or all decode slots busy",
         "headers": {
           "Retry-After": {
             "schema": {

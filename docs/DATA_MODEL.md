@@ -405,8 +405,9 @@ Run an orphan detector periodically and report, never delete silently.
 - Never edit an applied migration; add a new one.
 - Destructive changes require a backup step in `docs/OPERATIONS.md`.
 - The first migration is `0001_init.sql`; `0002` drops the content/hash FK so
-  tombstones can outlive blobs, and `0003` adds source/attribution and view
-  counters. The schema version is tracked in `_sqlx_migrations`.
+  tombstones can outlive blobs, `0003` adds source/attribution and view
+  counters, and `0004` adds indexes for client quotas and retention. The schema
+  version is tracked in `_sqlx_migrations`.
 
 ## 9. Open points
 

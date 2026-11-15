@@ -26,6 +26,8 @@ fn worker_decodes_a_png_and_writes_a_thumbnail() {
         .arg("300")
         .arg("--max-decoded-bytes")
         .arg("268435456")
+        .arg("--thumbnail-size")
+        .arg("12")
         .output()
         .expect("run weft-decode");
     assert!(
@@ -38,4 +40,6 @@ fn worker_decodes_a_png_and_writes_a_thumbnail() {
     assert_eq!(decoded["width"], 12);
     assert_eq!(decoded["height"], 9);
     assert!(thumbnail.exists());
+    let image = image::open(&thumbnail).unwrap();
+    assert!(image.width() <= 12 && image.height() <= 12);
 }

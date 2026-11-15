@@ -20,6 +20,7 @@ fn main() -> ExitCode {
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut input: Option<PathBuf> = None;
     let mut thumbnail: Option<PathBuf> = None;
+    let mut thumbnail_size = 512;
     let mut limits = Limits::default();
 
     let mut args = std::env::args().skip(1);
@@ -28,6 +29,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             "--input" => input = Some(args.next().ok_or("missing --input value")?.into()),
             "--thumbnail" => {
                 thumbnail = Some(args.next().ok_or("missing --thumbnail value")?.into());
+            }
+            "--thumbnail-size" => {
+                thumbnail_size = parse(&mut args, "--thumbnail-size")?;
             }
             "--max-bytes" => limits.max_bytes = parse(&mut args, "--max-bytes")?,
             "--max-pixels" => limits.max_pixels = parse(&mut args, "--max-pixels")?,
@@ -42,7 +46,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let input = input.ok_or("missing --input")?;
     let thumbnail = thumbnail.ok_or("missing --thumbnail")?;
     limit_resources(limits.max_decoded_bytes)?;
-    let media = decode_file(&input, &thumbnail, limits)?;
+    let media = decode_file(&input, &thumbnail, thumbnail_size, limits)?;
     println!("{}", serde_json::to_string(&media)?);
     Ok(())
 }

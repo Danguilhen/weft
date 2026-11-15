@@ -30,7 +30,9 @@ pub async fn run_worker(
     input: &Path,
     thumbnail: &Path,
     limits: &UploadConfig,
+    decode: &DecodeConfig,
     max_bytes: u64,
+    thumbnail_size: u32,
 ) -> Result<DecodedMedia, DecodeWorkerError> {
     let mut command = Command::new(worker);
     command
@@ -50,10 +52,12 @@ pub async fn run_worker(
                 .unwrap_or(256 * 1024 * 1024)
                 .to_string(),
         )
+        .arg("--thumbnail-size")
+        .arg(thumbnail_size.clamp(1, 4096).to_string())
         .kill_on_drop(true);
 
     let output = tokio::time::timeout(
-        Duration::from_secs(limits.decode_timeout_seconds.max(1)),
+        Duration::from_secs(decode.timeout_seconds.max(1)),
         command.output(),
     )
     .await

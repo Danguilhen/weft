@@ -26,6 +26,7 @@ pub struct DecodedMedia {
 pub fn decode_file(
     input: &Path,
     thumbnail: &Path,
+    thumbnail_size: u32,
     limits: Limits,
 ) -> Result<DecodedMedia, DecodeError> {
     let bytes = fs::read(input)?;
@@ -67,7 +68,8 @@ pub fn decode_file(
     }
 
     let image = image::load_from_memory(&bytes)?;
-    let thumbnail_image = image.thumbnail(512, 512).to_rgb8();
+    let size = thumbnail_size.clamp(1, 4096);
+    let thumbnail_image = image.thumbnail(size, size).to_rgb8();
     let mut output = File::create(thumbnail)?;
     image::codecs::jpeg::JpegEncoder::new_with_quality(&mut output, 82)
         .encode_image(&thumbnail_image)?;
@@ -141,7 +143,7 @@ mod tests {
         let thumbnail = directory.path().join("thumb.jpg");
         let image = image::RgbImage::from_pixel(8, 6, image::Rgb([10, 20, 30]));
         image.save(&input).unwrap();
-        let decoded = decode_file(&input, &thumbnail, Limits::default()).unwrap();
+        let decoded = decode_file(&input, &thumbnail, 512, Limits::default()).unwrap();
         assert_eq!((decoded.width, decoded.height), (8, 6));
         assert_eq!(decoded.frames, 1);
         assert!(thumbnail.exists());
@@ -161,7 +163,7 @@ mod tests {
         }
         drop(encoder);
         file.flush().unwrap();
-        let decoded = decode_file(&input, &thumbnail, Limits::default()).unwrap();
+        let decoded = decode_file(&input, &thumbnail, 512, Limits::default()).unwrap();
         assert_eq!(decoded.frames, 2);
         assert_eq!(decoded.mime, "image/gif");
         assert!(thumbnail.exists());

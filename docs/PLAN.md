@@ -73,7 +73,7 @@ exists.
 - Add a two-node integration test: publish, discover, fetch metadata, update and
   delete.
 - Add a federation smoke test that runs two containers with distinct keys.
-- Publish the `w3id.org/weft/ns` context and verify the redirect before
+- Publish the `w3id.org/weft-network/ns` context and verify the redirect before
   federation is enabled.
 
 Exit criteria: two independent nodes discover each other, exchange metadata,

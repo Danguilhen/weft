@@ -10,7 +10,7 @@ settled before the first public node), `later` (can wait).
 | # | Question | Options | Impact | Status |
 |---|---|---|---|---|
 | Q1 | Public name, domain, crate namespace | Weft (selected); another name | Crate names, URNs, JSON-LD namespace, domain ownership | resolved by ADR-012 and ADR-014 (name/crates/URN/namespace; domain optional) |
-| Q2 | JSON-LD namespace URI | `https://weft.network/ns#`; a registered w3id; another domain | Federation compatibility; must be stable before Phase 2 | resolved by ADR-014 (`https://w3id.org/weft/ns#`; w3id registration before federation) |
+| Q2 | JSON-LD namespace URI | `https://weft.network/ns#`; a registered w3id; another domain | Federation compatibility; must be stable before Phase 2 | resolved by ADR-014 (`https://w3id.org/weft-network/ns#`; w3id registration before federation) |
 | Q3 | ActivityPub signature interoperability | Ed25519 only; Ed25519 plus RSA-2048 compatibility key | Mastodon-style interop vs simpler implementation | resolved by ADR-013 (RSA-2048 for AP; Ed25519 for WMP) |
 | Q4 | Default upload policy | `review` (quarantine); `open`; `closed` | Abuse exposure vs contribution friction | resolved by ADR-010 |
 | Q5 | Search backend | PostgreSQL FTS; Meilisearch from day one | Operational weight, search quality | resolved by ADR-002; revisit after MVP |

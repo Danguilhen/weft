@@ -63,4 +63,4 @@ the owning document instead of adding a third description.
 - API paths are relative to the node origin and start with `/api/v1`.
 - `urn:weft:sha256:<hash>` identifies immutable bytes.
 - The public name is Weft; the JSON-LD namespace is fixed at
-  `https://w3id.org/weft/ns#` (ADR-014). A brand domain remains optional.
+  `https://w3id.org/weft-network/ns#` (ADR-014). A brand domain remains optional.

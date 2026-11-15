@@ -279,9 +279,9 @@ addresses. Suggested HTTP mappings:
 | `payload_too_large` | 413 |
 | `unsupported_media_type` | 415 |
 | `validation_failed` | 422 |
-| `rate_limited` | 429 |
+| `rate_limited`, `pending_quota`, `daily_quota` | 429 |
 | `conflict` | 409 |
-| `service_unavailable` | 503 |
+| `quarantine_full`, `decode_busy`, `service_unavailable` | 503 |
 
 ## 10. Rate limits
 
@@ -294,8 +294,9 @@ X-RateLimit-Reset: 1763088000
 Retry-After: 30
 ```
 
-Limits are per hashed client, endpoint class and node policy. Search and media
-downloads may have separate budgets.
+Limits are per hashed client and node policy. Uploads additionally enforce a
+per-client pending count, a daily byte budget and a global quarantine cap.
+`Retry-After` is present on quota and decode-busy responses.
 
 ## 11. Caching
 

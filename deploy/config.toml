@@ -41,7 +41,6 @@ max_pixels = 16000000
 max_frames = 300
 max_decoded_memory = "256MB"
 max_concurrent_decodes = 2
-decode_timeout_seconds = 10
 max_title_chars = 200
 max_description_chars = 2000
 max_tags = 20
@@ -49,6 +48,8 @@ max_tag_chars = 40
 rate_limit_per_hour = 20
 rate_limit_burst = 5
 max_pending_per_client = 10
+max_pending_total = 500
+quarantine_days = 7
 max_daily_bytes = "100MB"
 rate_limit_ipv6_prefix = 64
 proof_of_work = false
@@ -59,7 +60,6 @@ format = "json"
 
 [metrics]
 enabled = true
-bind = "127.0.0.1:9090"
 
 [privacy]
 hash_salt_file = "/var/lib/weft/hash.salt"

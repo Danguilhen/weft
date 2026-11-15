@@ -21,6 +21,11 @@ deploy/state/
 .idea/
 .vscode/
 
+# Local node state and secrets
+/config.toml
+/node.key
+/hash.salt
+
 # Local databases and uploads
 *.sqlite
 *.sqlite-shm

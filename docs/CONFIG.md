@@ -1,7 +1,6 @@
 # Weft — configuration
 
-Status: design for the standalone MVP. Keys are illustrative until the loader and
-`weft init` exist; update this file with the implementation.
+Status: implemented for the standalone MVP. `weft init` writes this shape; update this file with any loader change.
 
 Configuration is TOML. Environment variables override file values with the
 `WEFT__SECTION__KEY` convention (double underscore between nesting levels):
@@ -78,8 +77,7 @@ allowed_mimes = ["image/gif", "image/png", "image/jpeg", "image/webp"]
 max_pixels = 16000000
 max_frames = 300
 max_decoded_memory = "256MB"
-max_concurrent_decodes = 2
-decode_timeout_seconds = 10
+max_concurrent_decodes = 2      # simultaneous weft-decode workers
 max_title_chars = 200
 max_description_chars = 2000
 max_tags = 20
@@ -87,11 +85,13 @@ max_tag_chars = 40
 # Per-client token bucket; the client is a salted hash, not an IP.
 rate_limit_per_hour = 20
 rate_limit_burst = 5
-max_pending_per_client = 10
+max_pending_per_client = 10      # distinct pending items per client
+max_pending_total = 500          # global quarantine cap
+quarantine_days = 7              # pending items expire after this
 max_daily_bytes = "100MB"
 # IPv6 rate-limit prefix (64 = one bucket per /64; 0 = per address).
 rate_limit_ipv6_prefix = 64
-# Optional proof of work for anonymous uploads.
+# Reserved; must stay false until the challenge flow is implemented.
 proof_of_work = false
 
 # ── Bandwidth and transfers ───────────────────────────────────────────────────
@@ -138,8 +138,7 @@ backend = "postgres"              # postgres | meilisearch (future)
 
 # ── Observability ─────────────────────────────────────────────────────────────
 [metrics]
-enabled = true
-bind = "127.0.0.1:9090"           # or expose /metrics on the main server
+enabled = true                    # serves /metrics on the main listener
 
 [decode]
 # Empty means the weft-decode binary next to weft.
@@ -174,6 +173,11 @@ max_manifest_requests_per_minute = 300
 | `upload.max_frames` | 300 | Bounds decode work |
 | `upload.max_decoded_memory` | 256 MB | Fits the supported 2 GB profile with headroom |
 | `decode.worker_path` | sibling `weft-decode` | Keeps decoding out of the web process |
+| `upload.max_concurrent_decodes` | 2 | Bounds simultaneous decoder processes on the 2 GB profile |
+| `upload.max_pending_per_client` | 10 | One client cannot fill the review queue |
+| `upload.max_pending_total` | 500 | Global quarantine cap |
+| `upload.quarantine_days` | 7 | Bounds stale quarantined storage |
+| `server.trusted_proxies` | loopback | Forwarded headers are ignored from other peers |
 | `federation.enabled` | false | The MVP is standalone |
 | `replication.enabled` | false | Opt-in by design |
 | `search.backend` | `postgres` | No extra service for a small node |
@@ -192,6 +196,9 @@ At startup:
 - `max_decoded_memory` is within the operator's budget and above the largest
   allowed image. `weft doctor` uses cgroup v1/v2 memory and CPU limits when
   present, so container quotas are checked rather than the host total.
+- `max_daily_bytes` parses, `max_pending_total` and `max_concurrent_decodes`
+  are non-zero, and `trusted_proxies` are valid CIDRs.
+- `proof_of_work` must be false until the challenge flow exists.
 - `database.url` parses and connects; migrations are current.
 - `decode.worker_path` exists or resolves to the sibling `weft-decode`; an admin
   token is required for admin routes.

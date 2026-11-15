@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://w3id.org/weft/schemas/manifest-0.1.json",
+  "$id": "https://w3id.org/weft-network/schemas/manifest-0.1.json",
   "title": "Weft media manifest",
   "description": "Signed metadata for immutable media bytes. The signature is Ed25519 over RFC 8785 canonical JSON with the signature property removed.",
   "type": "object",

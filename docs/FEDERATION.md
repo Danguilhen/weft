@@ -15,7 +15,7 @@ Each node exposes a `Service` actor:
 {
   "@context": [
     "https://www.w3.org/ns/activitystreams",
-    "https://w3id.org/weft/ns"
+    "https://w3id.org/weft-network/ns"
   ],
   "id": "https://gifs.example/actor",
   "type": "Service",
@@ -51,8 +51,8 @@ Each node exposes a `Service` actor:
 - Key rotation adds a new key and marks the old key `validUntil`. A revoked key
   stays listed with `revokedAt` so old signatures can be classified as
   historical, not current. The two key types have independent histories.
-- The JSON-LD namespace is fixed at `https://w3id.org/weft/ns#` with the context
-  at `https://w3id.org/weft/ns` (ADR-014).
+- The JSON-LD namespace is fixed at `https://w3id.org/weft-network/ns#` with the context
+  at `https://w3id.org/weft-network/ns` (ADR-014).
 
 ## 2. Discovery
 
@@ -86,7 +86,7 @@ manifest and bytes; it never contains the bytes.
 {
   "@context": [
     "https://www.w3.org/ns/activitystreams",
-    "https://w3id.org/weft/ns"
+    "https://w3id.org/weft-network/ns"
   ],
   "id": "https://gifs.example/o/3a7bd3e2360a...",
   "type": "Document",
@@ -160,7 +160,7 @@ the decision; other nodes apply their own policy.
 {
   "@context": [
     "https://www.w3.org/ns/activitystreams",
-    "https://w3id.org/weft/ns"
+    "https://w3id.org/weft-network/ns"
   ],
   "id": "https://gifs.example/events/01J...",
   "type": "weft:ModerationEvent",
@@ -308,7 +308,7 @@ At minimum a node can:
 
 ## 11. Open points
 
-- Publish the `w3id.org/weft/ns` context and verify the redirect before enabling
+- Publish the `w3id.org/weft-network/ns` context and verify the redirect before enabling
   federation.
 - Whether `Flag` alone is sufficient for licence disputes or a dedicated object
   is needed.

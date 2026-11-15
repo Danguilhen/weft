@@ -713,6 +713,96 @@ pub async fn delete_block(pool: &PgPool, id: Uuid) -> Result<bool, DbError> {
     Ok(result.rows_affected() > 0)
 }
 
+/// Number of items waiting for review.
+pub async fn pending_count(pool: &PgPool) -> Result<i64, DbError> {
+    Ok(
+        sqlx::query_scalar("SELECT COUNT(*)::bigint FROM content WHERE status = 'pending'")
+            .fetch_one(pool)
+            .await?,
+    )
+}
+
+/// Distinct pending items uploaded by one client.
+pub async fn pending_count_for_client(pool: &PgPool, client_hash: &[u8]) -> Result<i64, DbError> {
+    Ok(sqlx::query_scalar(
+        r#"
+        SELECT COUNT(DISTINCT u.hash)::bigint
+        FROM uploads u
+        JOIN content c ON c.hash = u.hash
+        WHERE u.client_hash = $1
+          AND u.review = 'queued'
+          AND c.status = 'pending'
+        "#,
+    )
+    .bind(client_hash)
+    .fetch_one(pool)
+    .await?)
+}
+
+/// Uploaded bytes accepted from one client in the last `hours` hours.
+pub async fn uploaded_bytes_since(
+    pool: &PgPool,
+    client_hash: &[u8],
+    hours: i64,
+) -> Result<i64, DbError> {
+    Ok(sqlx::query_scalar(
+        r#"
+        SELECT COALESCE(SUM(b.size), 0)::bigint
+        FROM uploads u
+        JOIN blobs b ON b.hash = u.hash
+        WHERE u.client_hash = $1
+          AND u.status = 'stored'
+          AND u.created_at > now() - ($2::int * interval '1 hour')
+        "#,
+    )
+    .bind(client_hash)
+    .bind(hours as i32)
+    .fetch_one(pool)
+    .await?)
+}
+
+/// Delete pending content older than `days`; returns the removed hashes.
+pub async fn expire_pending(pool: &PgPool, days: u32) -> Result<Vec<String>, DbError> {
+    Ok(sqlx::query_scalar(
+        r#"
+        DELETE FROM content
+        WHERE status = 'pending'
+          AND created_at < now() - ($1::int * interval '1 day')
+        RETURNING hash
+        "#,
+    )
+    .bind(days as i32)
+    .fetch_all(pool)
+    .await?)
+}
+
+/// Clear old client pseudonyms and delete expired reports.
+pub async fn retention_cleanup(
+    pool: &PgPool,
+    client_hash_days: u32,
+    report_days: u32,
+) -> Result<(u64, u64), DbError> {
+    let clients = sqlx::query(
+        r#"
+        UPDATE uploads
+        SET client_hash = NULL
+        WHERE client_hash IS NOT NULL
+          AND created_at < now() - ($1::int * interval '1 day')
+        "#,
+    )
+    .bind(client_hash_days as i32)
+    .execute(pool)
+    .await?
+    .rows_affected();
+    let reports =
+        sqlx::query("DELETE FROM reports WHERE created_at < now() - ($1::int * interval '1 day')")
+            .bind(report_days as i32)
+            .execute(pool)
+            .await?
+            .rows_affected();
+    Ok((clients, reports))
+}
+
 /// Hashes with a blob but no content reference.
 pub async fn orphan_hashes(pool: &PgPool) -> Result<Vec<String>, DbError> {
     Ok(sqlx::query_scalar(

@@ -165,6 +165,13 @@ Do not put upload bodies, tokens or client addresses in metrics labels.
 ## 10. Moderation operations
 
 - Review the quarantine queue daily on a public node.
+- The server runs a maintenance pass at startup and every six hours: it expires
+  pending items older than `upload.quarantine_days`, clears upload client hashes
+  older than `privacy.client_hash_retention_days`, deletes reports older than
+  `privacy.report_retention_days`, and removes orphaned blobs/thumbnails.
+- Put the node behind a reverse proxy and keep `server.trusted_proxies` limited
+  to that proxy. Otherwise direct clients can spoof `X-Forwarded-For` and bypass
+  per-client buckets and quotas.
 - Keep a written takedown and illegal-content procedure.
 - Record decisions as moderation events with minimal evidence.
 - Restrict first, investigate second for credible urgent reports.

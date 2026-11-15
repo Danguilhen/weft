@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://w3id.org/weft/schemas/node-0.1.json",
+  "$id": "https://w3id.org/weft-network/schemas/node-0.1.json",
   "title": "Weft node descriptor",
   "description": "Signed description of a Weft node, served at /.well-known/weft. Discovery is not trust.",
   "type": "object",

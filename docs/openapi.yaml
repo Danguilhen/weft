@@ -218,6 +218,7 @@ paths:
         '415': { $ref: '#/components/responses/Unsupported' }
         '422': { $ref: '#/components/responses/Unprocessable' }
         '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /api/v1/report:
     post:
       tags: [moderation]
@@ -534,7 +535,14 @@ components:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     RateLimited:
-      description: Rate limited
+      description: Rate limited or over a pending/daily quota
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ServiceUnavailable:
+      description: Quarantine full or all decode slots busy
       headers:
         Retry-After: { schema: { type: integer } }
       content:

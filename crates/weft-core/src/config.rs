@@ -135,7 +135,6 @@ pub struct UploadConfig {
     pub max_frames: u32,
     pub max_decoded_memory: String,
     pub max_concurrent_decodes: u32,
-    pub decode_timeout_seconds: u64,
     pub max_title_chars: u32,
     pub max_description_chars: u32,
     pub max_tags: u32,
@@ -143,6 +142,8 @@ pub struct UploadConfig {
     pub rate_limit_per_hour: u32,
     pub rate_limit_burst: u32,
     pub max_pending_per_client: u32,
+    pub max_pending_total: u32,
+    pub quarantine_days: u32,
     pub max_daily_bytes: String,
     pub rate_limit_ipv6_prefix: u8,
     pub proof_of_work: bool,
@@ -162,7 +163,6 @@ impl Default for UploadConfig {
             max_frames: 300,
             max_decoded_memory: "256MB".to_string(),
             max_concurrent_decodes: 2,
-            decode_timeout_seconds: 10,
             max_title_chars: 200,
             max_description_chars: 2000,
             max_tags: 20,
@@ -170,6 +170,8 @@ impl Default for UploadConfig {
             rate_limit_per_hour: 20,
             rate_limit_burst: 5,
             max_pending_per_client: 10,
+            max_pending_total: 500,
+            quarantine_days: 7,
             max_daily_bytes: "100MB".to_string(),
             rate_limit_ipv6_prefix: 64,
             proof_of_work: false,
@@ -214,15 +216,11 @@ impl Default for LoggingConfig {
 #[serde(default)]
 pub struct MetricsConfig {
     pub enabled: bool,
-    pub bind: String,
 }
 
 impl Default for MetricsConfig {
     fn default() -> Self {
-        Self {
-            enabled: true,
-            bind: "127.0.0.1:9090".to_string(),
-        }
+        Self { enabled: true }
     }
 }
 
@@ -290,6 +288,14 @@ impl AppConfig {
                 .to_string_lossy()
                 .into_owned();
         }
+        if !self.privacy.hash_salt_file.trim().is_empty()
+            && Path::new(&self.privacy.hash_salt_file).is_relative()
+        {
+            self.privacy.hash_salt_file = base
+                .join(&self.privacy.hash_salt_file)
+                .to_string_lossy()
+                .into_owned();
+        }
     }
 
     /// Parse a TOML string and apply environment overrides.
@@ -345,10 +351,38 @@ impl AppConfig {
                 "upload.allowed_mimes must not be empty".into(),
             ));
         }
-        if self.upload.max_pixels == 0 || self.upload.max_frames == 0 {
+        if self.upload.max_pixels == 0
+            || self.upload.max_frames == 0
+            || self.upload.max_concurrent_decodes == 0
+            || self.upload.max_pending_per_client == 0
+            || self.upload.max_pending_total == 0
+            || self.storage.thumbnail_size == 0
+        {
             return Err(ConfigError::Invalid(
-                "upload limits must be greater than zero".into(),
+                "upload and thumbnail limits must be greater than zero".into(),
             ));
+        }
+        if crate::units::parse_size(&self.upload.max_daily_bytes).is_none() {
+            return Err(ConfigError::Invalid(
+                "upload.max_daily_bytes must be a size such as 100MB".into(),
+            ));
+        }
+        if self.upload.rate_limit_ipv6_prefix > 128 {
+            return Err(ConfigError::Invalid(
+                "upload.rate_limit_ipv6_prefix must be between 0 and 128".into(),
+            ));
+        }
+        if self.upload.proof_of_work {
+            return Err(ConfigError::Invalid(
+                "upload.proof_of_work is not implemented; leave it false".into(),
+            ));
+        }
+        for network in &self.server.trusted_proxies {
+            parse_cidr(network).map_err(|_| {
+                ConfigError::Invalid(format!(
+                    "server.trusted_proxies contains an invalid CIDR: {network}"
+                ))
+            })?;
         }
         if !matches!(self.logging.format.as_str(), "json" | "pretty") {
             return Err(ConfigError::Invalid(
@@ -357,6 +391,24 @@ impl AppConfig {
         }
         Ok(())
     }
+}
+
+fn parse_cidr(value: &str) -> Result<(), ()> {
+    let (address, prefix) = value.split_once('/').unwrap_or((value, ""));
+    let address: std::net::IpAddr = address.parse().map_err(|_| ())?;
+    let max = match address {
+        std::net::IpAddr::V4(_) => 32,
+        std::net::IpAddr::V6(_) => 128,
+    };
+    let prefix = if prefix.is_empty() {
+        max
+    } else {
+        prefix.parse::<u8>().map_err(|_| ())?
+    };
+    if prefix > max {
+        return Err(());
+    }
+    Ok(())
 }
 
 fn validate_origin(value: &str, field: &str) -> Result<(), ConfigError> {
@@ -503,6 +555,27 @@ mod tests {
         assert!(std::path::Path::new(&config.storage.path).is_absolute());
         assert!(config.node.key_file.ends_with("node.key"));
         assert!(config.storage.path.ends_with("data"));
+        assert!(std::path::Path::new(&config.privacy.hash_salt_file).is_absolute());
+        assert!(config.privacy.hash_salt_file.ends_with("hash.salt"));
+    }
+
+    #[test]
+    fn rejects_unimplemented_proof_of_work_and_bad_limits() {
+        let mut config = AppConfig::default();
+        config.upload.proof_of_work = true;
+        assert!(config.validate().is_err());
+
+        let mut config = AppConfig::default();
+        config.upload.max_daily_bytes = "not-a-size".to_string();
+        assert!(config.validate().is_err());
+
+        let mut config = AppConfig::default();
+        config.upload.max_concurrent_decodes = 0;
+        assert!(config.validate().is_err());
+
+        let mut config = AppConfig::default();
+        config.server.trusted_proxies = vec!["10.0.0.0/33".to_string()];
+        assert!(config.validate().is_err());
     }
 
     #[test]

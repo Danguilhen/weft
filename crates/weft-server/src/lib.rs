@@ -6,12 +6,18 @@ pub mod decode;
 pub mod metrics;
 pub mod rate_limit;
 
-use std::path::PathBuf;
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::body::Body;
-use axum::extract::{DefaultBodyLimit, Multipart, Path as AxumPath, Query, Request, State};
+use axum::extract::{
+    ConnectInfo, DefaultBodyLimit, FromRequestParts, Multipart, Path as AxumPath, Query, Request,
+    State,
+};
+use axum::http::request::Parts;
 use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -24,6 +30,7 @@ use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use thiserror::Error;
 use tokio::net::TcpListener;
+use tokio::sync::Semaphore;
 use tracing_subscriber::EnvFilter;
 use url::Url;
 use uuid::Uuid;
@@ -34,9 +41,29 @@ use weft_storage::{BlobStore, LocalStore, StorageError};
 
 use crate::decode::DecodeWorkerError;
 use crate::metrics::Metrics;
-use crate::rate_limit::{client_key, RateLimiter};
+use crate::rate_limit::{client_identity, ClientHasher, RateLimiter, TrustedProxies};
 
 const OPENAPI_JSON: &str = include_str!("../../../docs/openapi.json");
+
+/// Optional peer address supplied by `into_make_service_with_connect_info`.
+#[derive(Clone, Copy, Debug)]
+struct PeerAddr(Option<SocketAddr>);
+
+impl<S> FromRequestParts<S> for PeerAddr
+where
+    S: Send + Sync,
+{
+    type Rejection = Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        Ok(Self(
+            parts
+                .extensions
+                .get::<ConnectInfo<SocketAddr>>()
+                .map(|info| info.0),
+        ))
+    }
+}
 
 #[derive(Clone)]
 pub struct AppState {
@@ -49,7 +76,11 @@ pub struct AppState {
     pub signer: Arc<NodeSigner>,
     pub worker_path: PathBuf,
     pub rate: Arc<RateLimiter>,
+    pub client_hasher: Arc<ClientHasher>,
+    pub trusted_proxies: TrustedProxies,
+    pub decode_semaphore: Arc<Semaphore>,
     pub max_upload_bytes: u64,
+    pub max_daily_bytes: i64,
     pub max_json_bytes: usize,
     pub metrics_enabled: bool,
 }
@@ -70,6 +101,21 @@ impl AppState {
         ));
         let max_upload_bytes =
             parse_size(&config.storage.max_file_size).unwrap_or(15 * 1024 * 1024);
+        let max_daily_bytes =
+            parse_size(&config.upload.max_daily_bytes).unwrap_or(100 * 1024 * 1024) as i64;
+        let trusted_proxies = TrustedProxies::parse(&config.server.trusted_proxies)
+            .expect("server.trusted_proxies is validated at load time");
+        let client_hasher = Arc::new(if Path::new(&config.privacy.hash_salt_file).is_relative() {
+            ClientHasher::load_or_create("").expect("ephemeral salt")
+        } else {
+            ClientHasher::load_or_create(&config.privacy.hash_salt_file).unwrap_or_else(|error| {
+                tracing::warn!(%error, "could not load the client hash salt; using an ephemeral one");
+                ClientHasher::load_or_create("").expect("ephemeral salt")
+            })
+        });
+        let decode_semaphore = Arc::new(Semaphore::new(
+            config.upload.max_concurrent_decodes.max(1) as usize,
+        ));
         let search = Arc::new(weft_db::PostgresSearch::new(pool.clone()));
         let metrics_enabled = config.metrics.enabled;
         Self {
@@ -83,7 +129,11 @@ impl AppState {
             signer: Arc::new(signer),
             worker_path,
             rate,
+            client_hasher,
+            trusted_proxies,
+            decode_semaphore,
             max_upload_bytes,
+            max_daily_bytes,
             metrics_enabled,
         }
     }
@@ -201,13 +251,17 @@ pub async fn run(config: AppConfig) -> Result<(), ServerError> {
         config.clone(),
         signer,
     );
-    let app = build_router(state);
+    let app = build_router(state.clone());
+    spawn_maintenance(state);
 
     let listener = TcpListener::bind(&config.server.bind).await?;
     tracing::info!(bind = %config.server.bind, "listening");
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
     Ok(())
 }
 
@@ -584,8 +638,44 @@ struct UploadFields {
     file: Option<Vec<u8>>,
 }
 
+fn enforce_quotas(
+    config: &weft_core::config::UploadConfig,
+    pending_total: i64,
+    pending_client: i64,
+    daily_bytes: i64,
+    incoming_bytes: i64,
+) -> Result<(), ApiError> {
+    if pending_total >= i64::from(config.max_pending_total) {
+        return Err(ApiError::quota(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "quarantine_full",
+            "The review queue is full; try again later.",
+            3600,
+        ));
+    }
+    if pending_client >= i64::from(config.max_pending_per_client) {
+        return Err(ApiError::quota(
+            StatusCode::TOO_MANY_REQUESTS,
+            "pending_quota",
+            "You have too many uploads waiting for review.",
+            3600,
+        ));
+    }
+    let max_daily = parse_size(&config.max_daily_bytes).unwrap_or(100 * 1024 * 1024) as i64;
+    if daily_bytes.saturating_add(incoming_bytes) > max_daily {
+        return Err(ApiError::quota(
+            StatusCode::TOO_MANY_REQUESTS,
+            "daily_quota",
+            "The daily upload byte quota is exhausted.",
+            3600,
+        ));
+    }
+    Ok(())
+}
+
 async fn upload(
     State(state): State<AppState>,
+    peer: PeerAddr,
     headers: HeaderMap,
     mut multipart: Multipart,
 ) -> Result<(StatusCode, Json<Value>), ApiError> {
@@ -596,10 +686,17 @@ async fn upload(
             "This node does not accept uploads.",
         ));
     }
-    let client = client_key(&headers);
+    let client = client_identity(
+        &headers,
+        peer.0.map(|address| address.ip()),
+        &state.trusted_proxies,
+        state.config.upload.rate_limit_ipv6_prefix,
+    );
     if let Err(retry) = state.rate.check(&client) {
         return Err(ApiError::rate_limited(retry));
     }
+    let client_digest = state.client_hasher.digest(&client);
+    let client_hash = &client_digest[..16];
 
     let mut fields = UploadFields::default();
     while let Some(field) = multipart
@@ -670,6 +767,27 @@ async fn upload(
         }
     }
 
+    let pending_total = weft_db::pending_count(&state.pool)
+        .await
+        .map_err(ApiError::internal)?;
+    let pending_client = weft_db::pending_count_for_client(&state.pool, client_hash)
+        .await
+        .map_err(ApiError::internal)?;
+    let daily_bytes = weft_db::uploaded_bytes_since(&state.pool, client_hash, 24)
+        .await
+        .map_err(ApiError::internal)?;
+    if let Err(error) = enforce_quotas(
+        &state.config.upload,
+        pending_total,
+        pending_client,
+        daily_bytes,
+        bytes.len() as i64,
+    ) {
+        state.metrics.quota_rejected();
+        state.metrics.upload_failed();
+        return Err(error);
+    }
+
     if fields.title.chars().count() > state.config.upload.max_title_chars as usize {
         return Err(ApiError::bad("title_too_long", "The title is too long."));
     }
@@ -713,12 +831,24 @@ async fn upload(
     let input = directory.path().join("upload.bin");
     let thumbnail_path = directory.path().join("thumb.jpg");
     std::fs::write(&input, &bytes).map_err(ApiError::internal)?;
+    let permit = state.decode_semaphore.try_acquire_owned().map_err(|_| {
+        state.metrics.decode_busy();
+        state.metrics.upload_failed();
+        ApiError::new(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "decode_busy",
+            "The decode queue is full; retry shortly.",
+        )
+        .with_retry(5)
+    })?;
     let decoded = decode::run_worker(
         &state.worker_path,
         &input,
         &thumbnail_path,
         &state.config.upload,
+        &state.config.decode,
         state.max_upload_bytes,
+        state.config.storage.thumbnail_size,
     )
     .await
     .map_err(|error| match error {
@@ -746,6 +876,7 @@ async fn upload(
         }
     })?;
 
+    drop(permit);
     let hash = hash_bytes(&bytes);
     state
         .storage
@@ -760,7 +891,6 @@ async fn upload(
     let is_open = state.config.upload.mode == "open";
     let status = if is_open { "active" } else { "pending" };
     let review = if is_open { "not_required" } else { "queued" };
-    let client_digest = Sha256::digest(client.as_bytes());
     let recorded: RecordedUpload = weft_db::record_upload(
         &state.pool,
         &NewUpload {
@@ -785,7 +915,7 @@ async fn upload(
             licence_evidence: &evidence,
             tags: &tags,
             review,
-            client_hash: Some(&client_digest[..16]),
+            client_hash: Some(client_hash),
         },
     )
     .await
@@ -843,10 +973,10 @@ async fn report(
     ) {
         return Err(ApiError::bad("invalid_reason", "Unknown report reason."));
     }
-    let contact_hash = request.contact.as_ref().map(|contact| {
-        let digest = Sha256::digest(contact.as_bytes());
-        digest[..16].to_vec()
-    });
+    let contact_hash = request
+        .contact
+        .as_ref()
+        .map(|contact| state.client_hasher.digest(contact)[..16].to_vec());
     let report_id = weft_db::insert_report(
         &state.pool,
         &hash,
@@ -880,10 +1010,10 @@ async fn licence_dispute(
     if request.claim.trim().is_empty() {
         return Err(ApiError::bad("invalid_claim", "A claim is required."));
     }
-    let contact_hash = request.contact.as_ref().map(|contact| {
-        let digest = Sha256::digest(contact.as_bytes());
-        digest[..16].to_vec()
-    });
+    let contact_hash = request
+        .contact
+        .as_ref()
+        .map(|contact| state.client_hasher.digest(contact)[..16].to_vec());
     let report_id = weft_db::insert_licence_dispute(
         &state.pool,
         &hash,
@@ -1157,14 +1287,46 @@ async fn delete_admin_block(
     }
 }
 
-async fn admin_storage_cleanup(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-) -> Result<Json<Value>, ApiError> {
-    require_admin(&state, &headers)?;
-    let hashes = weft_db::orphan_hashes(&state.pool)
-        .await
-        .map_err(ApiError::internal)?;
+fn spawn_maintenance(state: AppState) {
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(6 * 60 * 60));
+        loop {
+            interval.tick().await;
+            if let Err(error) = run_maintenance(&state).await {
+                tracing::warn!(%error, "maintenance pass failed");
+            }
+        }
+    });
+}
+
+async fn run_maintenance(state: &AppState) -> Result<(), DbError> {
+    let expired = weft_db::expire_pending(&state.pool, state.config.upload.quarantine_days).await?;
+    state.metrics.quarantine_expired(expired.len() as u64);
+
+    let (clients, reports) = weft_db::retention_cleanup(
+        &state.pool,
+        state.config.privacy.client_hash_retention_days,
+        state.config.privacy.report_retention_days,
+    )
+    .await?;
+    state.metrics.retention_purged(clients + reports);
+
+    let (deleted, bytes) = cleanup_orphans(state).await?;
+    if !expired.is_empty() || clients > 0 || reports > 0 || deleted > 0 {
+        tracing::info!(
+            expired = expired.len(),
+            client_hashes = clients,
+            reports,
+            orphan_blobs = deleted,
+            orphan_bytes = bytes,
+            "maintenance pass"
+        );
+    }
+    Ok(())
+}
+
+async fn cleanup_orphans(state: &AppState) -> Result<(u64, i64), DbError> {
+    let hashes = weft_db::orphan_hashes(&state.pool).await?;
     let mut deleted = 0_u64;
     let mut bytes = 0_i64;
     for hash in &hashes {
@@ -1183,6 +1345,15 @@ async fn admin_storage_cleanup(
             deleted += 1;
         }
     }
+    Ok((deleted, bytes))
+}
+
+async fn admin_storage_cleanup(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Value>, ApiError> {
+    require_admin(&state, &headers)?;
+    let (deleted, bytes) = cleanup_orphans(&state).await.map_err(ApiError::internal)?;
     Ok(Json(json!({ "deleted": deleted, "bytes": bytes })))
 }
 
@@ -1424,6 +1595,23 @@ impl ApiError {
         Self::new(StatusCode::NOT_FOUND, code, message)
     }
 
+    fn quota(
+        status: StatusCode,
+        code: &'static str,
+        message: impl Into<String>,
+        retry_after: u64,
+    ) -> Self {
+        Self {
+            retry_after: Some(retry_after),
+            ..Self::new(status, code, message)
+        }
+    }
+
+    fn with_retry(mut self, retry_after: u64) -> Self {
+        self.retry_after = Some(retry_after);
+        self
+    }
+
     fn rate_limited(retry: u64) -> Self {
         Self {
             retry_after: Some(retry),
@@ -1512,4 +1700,36 @@ pub enum ServerError {
     Signing(#[from] weft_core::signing::SigningError),
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
+}
+
+#[cfg(test)]
+mod quota_tests {
+    use axum::http::StatusCode;
+
+    use super::enforce_quotas;
+
+    fn config() -> weft_core::config::UploadConfig {
+        weft_core::config::UploadConfig::default()
+    }
+
+    #[test]
+    fn a_full_global_queue_is_rejected() {
+        let error = enforce_quotas(&config(), 500, 0, 0, 1_000).unwrap_err();
+        assert_eq!(error.status, StatusCode::SERVICE_UNAVAILABLE);
+        assert_eq!(error.code, "quarantine_full");
+    }
+
+    #[test]
+    fn a_client_pending_quota_is_rejected() {
+        let error = enforce_quotas(&config(), 0, 10, 0, 1_000).unwrap_err();
+        assert_eq!(error.status, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(error.code, "pending_quota");
+    }
+
+    #[test]
+    fn the_daily_byte_budget_is_inclusive() {
+        assert!(enforce_quotas(&config(), 0, 0, 100_000_000 - 100, 100).is_ok());
+        let error = enforce_quotas(&config(), 0, 0, 100_000_000 - 99, 100).unwrap_err();
+        assert_eq!(error.code, "daily_quota");
+    }
 }

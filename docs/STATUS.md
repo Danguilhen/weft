@@ -13,7 +13,7 @@ This is the only status page.
 | Design review | Approved for Milestones 0 and 1; CI verified | `DESIGN_REVIEW.md` |
 | Implementation | Milestone 1 complete; CI verified | `DESIGN_REVIEW.md` §7–9 |
 | Documentation link check | Passing | `python3 tools/check_docs.py` |
-| Rust tests | 42 passing | `cargo test --workspace` |
+| Rust tests | 53 passing | `cargo test --workspace` |
 | PostgreSQL smoke test | Passing | `cargo test -p weft-server --test postgres_smoke -- --ignored` |
 | Rust workspace | Milestone 0 scaffold complete | `Cargo.toml` |
 | Nix flake/dev shell | Passing | `nix develop`, `nix flake check`, `nix build .#weft` |
@@ -46,16 +46,20 @@ implemented. Do not claim otherwise in README, issues or release notes.
   commands. `weft doctor` reads cgroup v1/v2 memory and CPU limits, so a
   constrained container is checked against the 2 GiB / 2 vCPU profile. Relative config, key and storage paths are resolved against the
   configuration file directory.
-- PostgreSQL migrations (`0001`–`0003`) covering nodes, keys, blobs, content,
+- PostgreSQL migrations (`0001`–`0004`) covering nodes, keys, blobs, content,
   tags, sources, evidence, uploads, reports, moderation events, federation
-  outbox/inbox, block rules, audit log, tombstones, source metadata and view
-  counters.
+  outbox/inbox, block rules, audit log, tombstones, source metadata, view
+  counters and quota/retention indexes.
 - Content-addressed local storage with atomic writes, hash verification and
   thumbnails.
 - A separate `weft-decode` worker for GIF/PNG/JPEG/WebP with dimensions, frame
   count, decoded-memory limits and JPEG thumbnails.
-- Multipart upload with `open`/`review`/`closed` policies, per-client token
-  buckets, quarantine, licence evidence and reports/disputes.
+- Multipart upload with `open`/`review`/`closed` policies, salted per-client
+  token buckets, pending and daily-byte quotas, a global quarantine cap and
+  expiry, trusted-proxy enforcement, a decode-concurrency semaphore and licence
+  evidence/reports/disputes.
+- Scheduled retention clears old client pseudonyms and reports, and removes
+  expired quarantine rows plus their orphaned blobs.
 - Search, newest/view-based trending lists, tags, signed manifests with
   evidence, sources, byte serving with Range/ETag/Digest and JPEG thumbnails,
   and admin queue/
@@ -88,9 +92,10 @@ implemented. Do not claim otherwise in README, issues or release notes.
 | Check | Count | How to run |
 |---|---|---|
 | Documentation links | 40 Markdown files | `python3 tools/check_docs.py` |
-| Rust tests | 42 | `cargo test --workspace` |
+| Rust tests | 53 | `cargo test --workspace` |
 | PostgreSQL smoke | 1 | `WEFT_TEST_DATABASE_URL=… cargo test -p weft-server --test postgres_smoke -- --ignored` |
-| Upload/review/search/media flow | 4 | `... --test upload_flow -- --ignored` |
+| Upload/review/quota flow | 7 | `... --test upload_flow -- --ignored` |
+| Retention/quarantine maintenance | 1 | `... --test maintenance -- --ignored` |
 | Real worker | 1 | `cargo test -p weft-validation --test worker_smoke` |
 | Protocol golden vectors | 0 | Milestone 2 |
 | Federation interop | 0 | Milestone 2 |
@@ -112,7 +117,7 @@ implemented. Do not claim otherwise in README, issues or release notes.
 | ADR-011 | Anonymous-upload anti-abuse: token buckets, quotas, optional PoW |
 | ADR-012 | Weft naming and the Weft Media Protocol (WMP) |
 | ADR-013 | ActivityPub uses RSA-2048; WMP keeps Ed25519 |
-| ADR-014 | JSON-LD namespace is `https://w3id.org/weft/ns#` |
+| ADR-014 | JSON-LD namespace is `https://w3id.org/weft-network/ns#` |
 
 ## Acceptance run (2026-11-14)
 
@@ -143,6 +148,22 @@ idle/control-plane cost only; decoding limits are covered by the worker tests.
 The Compose acceptance step passed in CI: the first run on `main` completed
 all seven jobs, including the container build and the Compose health check
 (run 43621500823, [workflow](https://github.com/Danguilhen/weft/actions/runs/43621500823)).
+
+## Hardening pass (2026-11-15)
+
+- Client identity uses the direct peer address unless it is in
+  `server.trusted_proxies`; IPv6 clients are grouped by
+  `upload.rate_limit_ipv6_prefix`.
+- Uploads enforce per-client pending and daily-byte quotas plus a global
+  quarantine cap. Expired quarantined content, old client pseudonyms and old
+  reports are removed by the six-hour maintenance pass.
+- Decode jobs are bounded by `upload.max_concurrent_decodes`; a full queue
+  returns `503 decode_busy` with `Retry-After`.
+- `storage.thumbnail_size` and `decode.timeout_seconds` now control the worker.
+- The hash salt is created atomically with mode `0600`, and report contact
+  hashes use the same salted digest.
+- New metrics cover quota refusals, decode-busy responses, quarantine expiry
+  and retention purges.
 
 ## Next milestone
 

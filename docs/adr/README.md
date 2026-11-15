@@ -21,7 +21,7 @@ decision is recorded in a new ADR that supersedes the old one.
 | [ADR-011](ADR-011-anti-abuse.md) | Anonymous-upload anti-abuse: token buckets, quotas, optional PoW | Accepted |
 | [ADR-012](ADR-012-naming-and-protocol.md) | Weft naming and the Weft Media Protocol (WMP) | Accepted |
 | [ADR-013](ADR-013-activitypub-signatures.md) | ActivityPub uses RSA-2048; WMP keeps Ed25519 | Accepted |
-| [ADR-014](ADR-014-jsonld-namespace.md) | JSON-LD namespace is `w3id.org/weft/ns#` | Accepted |
+| [ADR-014](ADR-014-jsonld-namespace.md) | JSON-LD namespace is `w3id.org/weft-network/ns#` | Accepted |
 
 ## Creating an ADR
 

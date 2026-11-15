@@ -718,3 +718,239 @@ async fn rejects_an_upload_over_the_storage_budget() {
         .unwrap();
     assert_eq!(content, 0);
 }
+
+#[tokio::test]
+#[ignore = "requires WEFT_TEST_DATABASE_URL"]
+async fn pending_quota_rejects_a_second_upload() {
+    let url = std::env::var("WEFT_TEST_DATABASE_URL")
+        .expect("set WEFT_TEST_DATABASE_URL to a disposable PostgreSQL database");
+    let pool = weft_db::connect_url(&url, 2, Duration::from_secs(5))
+        .await
+        .expect("connect to PostgreSQL");
+    weft_db::migrate(&pool).await.expect("apply migrations");
+
+    let directory = tempfile::tempdir().expect("temp directory");
+    let worker = directory.path().join("weft-decode");
+    write_fake_worker(&worker);
+    let mut config = AppConfig::default();
+    config.server.admin_token = "test-admin".to_string();
+    config.storage.path = directory.path().join("data").to_string_lossy().to_string();
+    config.decode.worker_path = worker.to_string_lossy().to_string();
+    config.privacy.hash_salt_file = directory
+        .path()
+        .join("hash.salt")
+        .to_string_lossy()
+        .to_string();
+    config.upload.max_pending_per_client = 1;
+    config.upload.max_pending_total = 1000;
+    let signer = NodeSigner::load_or_create(
+        directory.path().join("node.key"),
+        format!("{}#key-1", config.node.actor_url()),
+    )
+    .expect("node key");
+    let node = NodePublic::from_config(&config);
+    let storage = Arc::new(LocalStore::new(&config.storage.path).expect("storage"));
+    let state = AppState::new(
+        pool.clone(),
+        storage,
+        Arc::new(Metrics::default()),
+        node,
+        config,
+        signer,
+    );
+    let app = build_router(state);
+
+    let first = multipart_body(b"GIF89a-pending-one", "Pending one", "test");
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "203.0.113.201")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(first))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::ACCEPTED);
+
+    let second = multipart_body(b"GIF89a-pending-two", "Pending two", "test");
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "203.0.113.201")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(second))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    assert!(String::from_utf8_lossy(&body).contains("pending_quota"));
+}
+
+#[tokio::test]
+#[ignore = "requires WEFT_TEST_DATABASE_URL"]
+async fn daily_byte_quota_rejects_an_upload() {
+    let url = std::env::var("WEFT_TEST_DATABASE_URL")
+        .expect("set WEFT_TEST_DATABASE_URL to a disposable PostgreSQL database");
+    let pool = weft_db::connect_url(&url, 2, Duration::from_secs(5))
+        .await
+        .expect("connect to PostgreSQL");
+    weft_db::migrate(&pool).await.expect("apply migrations");
+
+    let directory = tempfile::tempdir().expect("temp directory");
+    let worker = directory.path().join("weft-decode");
+    write_fake_worker(&worker);
+    let mut config = AppConfig::default();
+    config.storage.path = directory.path().join("data").to_string_lossy().to_string();
+    config.decode.worker_path = worker.to_string_lossy().to_string();
+    config.privacy.hash_salt_file = directory
+        .path()
+        .join("hash.salt")
+        .to_string_lossy()
+        .to_string();
+    config.upload.max_daily_bytes = "1".to_string();
+    let signer = NodeSigner::load_or_create(
+        directory.path().join("node.key"),
+        format!("{}#key-1", config.node.actor_url()),
+    )
+    .expect("node key");
+    let node = NodePublic::from_config(&config);
+    let storage = Arc::new(LocalStore::new(&config.storage.path).expect("storage"));
+    let state = AppState::new(
+        pool,
+        storage,
+        Arc::new(Metrics::default()),
+        node,
+        config,
+        signer,
+    );
+    let app = build_router(state);
+
+    let upload = multipart_body(b"GIF89a-daily", "Daily", "test");
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/upload")
+                .header("x-forwarded-for", "203.0.113.202")
+                .header(
+                    header::CONTENT_TYPE,
+                    "multipart/form-data; boundary=weft-boundary",
+                )
+                .body(Body::from(upload))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    assert!(String::from_utf8_lossy(&body).contains("daily_quota"));
+}
+
+#[tokio::test]
+#[ignore = "requires WEFT_TEST_DATABASE_URL"]
+async fn decode_concurrency_is_bounded() {
+    let url = std::env::var("WEFT_TEST_DATABASE_URL")
+        .expect("set WEFT_TEST_DATABASE_URL to a disposable PostgreSQL database");
+    let pool = weft_db::connect_url(&url, 2, Duration::from_secs(5))
+        .await
+        .expect("connect to PostgreSQL");
+    weft_db::migrate(&pool).await.expect("apply migrations");
+
+    let directory = tempfile::tempdir().expect("temp directory");
+    let worker = directory.path().join("weft-decode");
+    let script = r#"#!/bin/sh
+thumbnail=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --thumbnail) thumbnail="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+sleep 2
+printf 'fake-thumbnail' > "$thumbnail"
+printf '{"mime":"image/gif","width":16,"height":16,"frames":1,"duration_ms":0}'
+"#;
+    std::fs::write(&worker, script).unwrap();
+    let mut permissions = std::fs::metadata(&worker).unwrap().permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&worker, permissions).unwrap();
+
+    let mut config = AppConfig::default();
+    config.storage.path = directory.path().join("data").to_string_lossy().to_string();
+    config.decode.worker_path = worker.to_string_lossy().to_string();
+    config.privacy.hash_salt_file = directory
+        .path()
+        .join("hash.salt")
+        .to_string_lossy()
+        .to_string();
+    config.upload.max_concurrent_decodes = 1;
+    let signer = NodeSigner::load_or_create(
+        directory.path().join("node.key"),
+        format!("{}#key-1", config.node.actor_url()),
+    )
+    .expect("node key");
+    let node = NodePublic::from_config(&config);
+    let storage = Arc::new(LocalStore::new(&config.storage.path).expect("storage"));
+    let state = AppState::new(
+        pool,
+        storage,
+        Arc::new(Metrics::default()),
+        node,
+        config,
+        signer,
+    );
+    let app = build_router(state);
+
+    let request = |body: Vec<u8>| {
+        Request::builder()
+            .method("POST")
+            .uri("/api/v1/upload")
+            .header("x-forwarded-for", "203.0.113.203")
+            .header(
+                header::CONTENT_TYPE,
+                "multipart/form-data; boundary=weft-boundary",
+            )
+            .body(Body::from(body))
+            .unwrap()
+    };
+    let first = app.clone().oneshot(request(multipart_body(
+        b"GIF89a-first-decode",
+        "First",
+        "test",
+    )));
+    let second = app.oneshot(request(multipart_body(
+        b"GIF89a-second-decode",
+        "Second",
+        "test",
+    )));
+    let (first, second) = tokio::join!(first, second);
+    let first = first.unwrap();
+    let second = second.unwrap();
+    let mut statuses = [first.status(), second.status()];
+    statuses.sort();
+    assert_eq!(
+        statuses,
+        [StatusCode::ACCEPTED, StatusCode::SERVICE_UNAVAILABLE]
+    );
+    let busy = if first.status() == StatusCode::SERVICE_UNAVAILABLE {
+        first
+    } else {
+        second
+    };
+    let body = to_bytes(busy.into_body(), 4096).await.unwrap();
+    assert!(String::from_utf8_lossy(&body).contains("decode_busy"));
+}

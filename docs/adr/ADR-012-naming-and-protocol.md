@@ -22,7 +22,7 @@ federation.
 - The media protocol is the **Weft Media Protocol (WMP)**.
 - Protocol version string: `weft-wmp/0.1`.
 - The JSON-LD namespace is resolved by ADR-014:
-  `https://w3id.org/weft/ns#`. A brand domain is still optional; do not use a
+  `https://w3id.org/weft-network/ns#`. A brand domain is still optional; do not use a
   domain the project does not control.
 - Check crates.io and the relevant trademark/domain registries before the first
   public release; this ADR records intent, not a legal clearance.
