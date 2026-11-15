@@ -23,9 +23,9 @@ mod client;
 mod error;
 mod model;
 
-pub use client::{Client, ClientBuilder, DownloadedMedia, ListQuery, Sort, Window};
+pub use client::{discover, Client, ClientBuilder, DownloadedMedia, ListQuery, Sort, Window};
 pub use error::Error;
 pub use model::{
-    Capabilities, ContentSummary, Licence, Manifest, ManifestLicence, Moderation, NodeDescriptor,
-    Page, Source, Sources, TagCount,
+    Capabilities, ContentSummary, DiscoveryDocument, Licence, Manifest, ManifestLicence,
+    Moderation, NodeDescriptor, Page, Source, Sources, TagCount,
 };

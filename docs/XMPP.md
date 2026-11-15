@@ -29,6 +29,13 @@ Jabu UI (Dioxus)
 - `weft-client` is the MIT-licensed Rust client crate from the Weft repository.
 - Jabu defines a provider trait so another backend can be added later.
 - The Weft node is selected in settings; there is no built-in central node.
+- When no node is configured, the picker tries
+  `https://<account-domain>/.well-known/weft-client`. The document contains a
+  `node` URL and is a hint, not a trust decision. The well-known route can be
+  served by the XMPP/community web server, or by Weft itself when it shares the
+  origin.
+- Discovery is attempted only when the picker opens, never at login, and never
+  sends the JID or account details. An explicit setting always wins.
 - Fetching a GIF is a separate step from sending it.
 
 ## 3. Settings

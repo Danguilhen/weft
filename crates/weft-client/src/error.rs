@@ -15,6 +15,10 @@ pub enum Error {
     Http(#[from] reqwest::Error),
     #[error("could not decode the node response: {0}")]
     Decode(#[from] serde_json::Error),
+    #[error("client discovery failed: {0}")]
+    Discovery(String),
+    #[error("invalid client discovery document: {0}")]
+    InvalidDiscovery(String),
     #[error("node returned {status} ({code}): {message}")]
     Api {
         status: u16,

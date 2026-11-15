@@ -1090,6 +1090,23 @@
         }
       }
     },
+    "/.well-known/weft-client": {
+      "get": {
+        "summary": "Client discovery document",
+        "responses": {
+          "200": {
+            "description": "Weft node pointer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveryDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/openapi.json": {
       "get": {
         "summary": "OpenAPI document",
@@ -1264,6 +1281,34 @@
       }
     },
     "schemas": {
+      "DiscoveryDocument": {
+        "type": "object",
+        "required": [
+          "version",
+          "node"
+        ],
+        "properties": {
+          "version": {
+            "type": "string",
+            "example": "weft-client/0.1"
+          },
+          "node": {
+            "type": "string",
+            "format": "uri"
+          },
+          "name": {
+            "type": "string"
+          },
+          "api": {
+            "type": "string",
+            "format": "uri"
+          },
+          "protocol": {
+            "type": "string",
+            "example": "weft-wmp/0.1"
+          }
+        }
+      },
       "ContentSummary": {
         "type": "object",
         "required": [

@@ -24,6 +24,20 @@ for item in page.items {
 # }
 ```
 
+## Discovery
+
+```rust,no_run
+# async fn run() -> Result<(), weft_client::Error> {
+let discovery = weft_client::discover("chat.example.org").await?;
+let client = weft_client::Client::new(&discovery.node)?;
+# Ok(())
+# }
+```
+
+`discover` fetches `https://<domain>/.well-known/weft-client`, refuses redirects
+and insecure non-localhost URLs, and returns a hint that the application should
+show to the user.
+
 ## Covered endpoints
 
 - `GET /api/v1/node`

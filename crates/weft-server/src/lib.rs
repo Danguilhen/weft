@@ -189,6 +189,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/healthz", get(healthz))
         .route("/readyz", get(readyz))
         .route("/api/v1/node", get(node))
+        .route("/.well-known/weft-client", get(well_known_client))
         .route("/api/v1/search", get(search))
         .route("/api/v1/trending", get(trending))
         .route("/api/v1/media", get(list_media))
@@ -337,6 +338,24 @@ async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
 
 async fn node(State(state): State<AppState>) -> Json<NodePublic> {
     Json((*state.node).clone())
+}
+
+async fn well_known_client(State(state): State<AppState>) -> impl IntoResponse {
+    let base = state.config.server.external_url.trim_end_matches('/');
+    (
+        [
+            ("content-type", "application/json; charset=utf-8"),
+            ("cache-control", "public, max-age=3600"),
+            ("access-control-allow-origin", "*"),
+        ],
+        Json(json!({
+            "version": "weft-client/0.1",
+            "node": base,
+            "name": state.node.name,
+            "api": format!("{base}/api/v1"),
+            "protocol": "weft-wmp/0.1",
+        })),
+    )
 }
 
 #[derive(Debug, Default, Deserialize)]

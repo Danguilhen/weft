@@ -226,3 +226,41 @@ async fn a_base_path_is_preserved() {
     assert!(request.starts_with("GET /weft/api/v1/node"), "{request}");
     assert_eq!(node.capabilities.media[0], "weft-wmp/0.1");
 }
+
+const DISCOVERY: &str = r#"{
+  "version": "weft-client/0.1",
+  "node": "https://gifs.example",
+  "name": "Example Weft",
+  "api": "https://gifs.example/api/v1",
+  "protocol": "weft-wmp/0.1"
+}"#;
+
+#[tokio::test]
+async fn discovery_reads_the_well_known_document() {
+    let (base, request) = serve_once("200 OK", "application/json", "", DISCOVERY.to_string()).await;
+    let document = weft_client::discover(&base).await.unwrap();
+    let request = request.await.unwrap();
+    assert!(
+        request.starts_with("GET /.well-known/weft-client"),
+        "{request}"
+    );
+    assert_eq!(document.node, "https://gifs.example");
+    assert_eq!(document.name.as_deref(), Some("Example Weft"));
+    assert_eq!(document.api.as_deref(), Some("https://gifs.example/api/v1"));
+}
+
+#[tokio::test]
+async fn discovery_rejects_an_insecure_node() {
+    let body = r#"{"version":"weft-client/0.1","node":"http://gifs.example"}"#;
+    let (base, _) = serve_once("200 OK", "application/json", "", body.to_string()).await;
+    let error = weft_client::discover(&base).await.unwrap_err();
+    assert!(matches!(error, weft_client::Error::InvalidDiscovery(_)));
+}
+
+#[tokio::test]
+async fn discovery_rejects_an_unknown_version() {
+    let body = r#"{"version":"other/1","node":"https://gifs.example"}"#;
+    let (base, _) = serve_once("200 OK", "application/json", "", body.to_string()).await;
+    let error = weft_client::discover(&base).await.unwrap_err();
+    assert!(matches!(error, weft_client::Error::InvalidDiscovery(_)));
+}

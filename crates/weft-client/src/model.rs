@@ -3,6 +3,20 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+/// A client discovery document served at `/.well-known/weft-client`.
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct DiscoveryDocument {
+    pub version: String,
+    pub node: String,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub api: Option<String>,
+    #[serde(default)]
+    pub protocol: Option<String>,
+}
+
 /// The node descriptor returned by `GET /api/v1/node`.
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

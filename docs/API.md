@@ -222,9 +222,29 @@ the operator reviews it.
 | `POST` | `/api/v1/replicas` | signature | Advertise a verified replica |
 | `POST` | `/api/v1/receipts` | signature | Submit a countersigned transfer receipt |
 | `GET` | `/api/v1/node` | none | This node's descriptor |
+| `GET` | `/.well-known/weft-client` | none | Client discovery document |
 
 Federation endpoints are optional until Milestone 2. A node with federation
 disabled returns `404` or an empty list with a capability flag; document which.
+
+### `GET /.well-known/weft-client`
+
+A small client discovery document for apps that share an origin with a Weft
+node or with its XMPP/community server:
+
+```json
+{
+  "version": "weft-client/0.1",
+  "node": "https://gifs.example",
+  "name": "Example Weft",
+  "api": "https://gifs.example/api/v1",
+  "protocol": "weft-wmp/0.1"
+}
+```
+
+It is public, cacheable for an hour and CORS-enabled. A different server on the
+same domain may serve a static copy pointing at the real node; clients must
+still let the user override the URL. See [`XMPP.md`](XMPP.md).
 
 ## 8. Admin endpoints
 

@@ -3,12 +3,15 @@
 use std::time::Duration;
 
 use reqwest::header::{HeaderMap, RETRY_AFTER};
+use reqwest::redirect::Policy;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use url::Url;
 
 use crate::error::Error;
-use crate::model::{ContentSummary, Manifest, NodeDescriptor, Page, Sources, TagCount};
+use crate::model::{
+    ContentSummary, DiscoveryDocument, Manifest, NodeDescriptor, Page, Sources, TagCount,
+};
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(20);
 const DEFAULT_USER_AGENT: &str = concat!("weft-client/", env!("CARGO_PKG_VERSION"));
@@ -269,6 +272,91 @@ impl Client {
     fn url(&self, path: &str) -> Result<Url, Error> {
         Ok(self.base.join(path)?)
     }
+}
+
+/// Discover a Weft node from an XMPP or community domain.
+///
+/// The document is fetched from `/.well-known/weft-client` with redirects
+/// disabled and a short timeout. It is a hint: callers should show the returned
+/// node and let the user override it.
+pub async fn discover(domain: &str) -> Result<DiscoveryDocument, Error> {
+    let url = discovery_url(domain)?;
+    let http = reqwest::Client::builder()
+        .timeout(Duration::from_secs(3))
+        .redirect(Policy::none())
+        .user_agent(DEFAULT_USER_AGENT)
+        .build()?;
+    let response = http.get(url).send().await?;
+    if !response.status().is_success() {
+        return Err(Error::Discovery(format!(
+            "discovery endpoint returned HTTP {}",
+            response.status()
+        )));
+    }
+    let mut document: DiscoveryDocument = response.json().await?;
+    if !document.version.starts_with("weft-client/") {
+        return Err(Error::InvalidDiscovery(format!(
+            "unsupported discovery version {}",
+            document.version
+        )));
+    }
+    let node = validate_discovered_url(&document.node, "node")?;
+    document.node = node.as_str().trim_end_matches('/').to_string();
+    if let Some(api) = document.api.as_deref() {
+        let api = validate_discovered_url(api, "api")?;
+        document.api = Some(api.as_str().trim_end_matches('/').to_string());
+    }
+    Ok(document)
+}
+
+fn discovery_url(domain: &str) -> Result<Url, Error> {
+    let raw = domain.trim();
+    if raw.is_empty() {
+        return Err(Error::Discovery("empty domain".into()));
+    }
+    let mut url = if raw.contains("://") {
+        Url::parse(raw)?
+    } else {
+        Url::parse(&format!("https://{raw}"))?
+    };
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err(Error::UnsupportedScheme);
+    }
+    if url.scheme() == "http" && !is_loopback_url(&url) {
+        return Err(Error::Discovery(
+            "discovery must use HTTPS outside localhost".into(),
+        ));
+    }
+    url.set_query(None);
+    url.set_fragment(None);
+    url.set_path("/.well-known/weft-client");
+    Ok(url)
+}
+
+fn validate_discovered_url(raw: &str, field: &str) -> Result<Url, Error> {
+    let url = Url::parse(raw)
+        .map_err(|error| Error::InvalidDiscovery(format!("invalid {field} URL: {error}")))?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err(Error::InvalidDiscovery(format!(
+            "{field} URL must use http or https"
+        )));
+    }
+    if url.host_str().is_none() {
+        return Err(Error::InvalidDiscovery(format!(
+            "{field} URL must include a host"
+        )));
+    }
+    if url.scheme() == "http" && !is_loopback_url(&url) {
+        return Err(Error::InvalidDiscovery(format!(
+            "{field} URL must use HTTPS outside localhost"
+        )));
+    }
+    Ok(url)
+}
+
+fn is_loopback_url(url: &Url) -> bool {
+    url.host_str()
+        .is_some_and(|host| matches!(host, "localhost" | "127.0.0.1" | "::1"))
 }
 
 /// Builder for [`Client`].

@@ -110,6 +110,29 @@ async fn health_ready_metrics_and_node_descriptor() {
     assert!(text.contains("127.0.0.1"));
 
     let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/.well-known/weft-client")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get("access-control-allow-origin")
+            .unwrap(),
+        "*"
+    );
+    let body = to_bytes(response.into_body(), 4096).await.unwrap();
+    let document: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(document["version"], "weft-client/0.1");
+    assert!(document["node"].as_str().unwrap().contains("127.0.0.1"));
+
+    let response = app
         .oneshot(
             Request::builder()
                 .uri("/api/openapi.json")
